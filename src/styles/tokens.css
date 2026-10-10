@@ -1,0 +1,40 @@
+/* Design tokens (dark theme only for now). Values come 1:1 from design/*.dc.html. */
+:root {
+  --bg: #1E2835;
+  --card: #2A3748;
+  --tabbar: #18212C;
+  --tabbar-border: #2F3D50;
+  --divider: #3A4A5F;
+  --text: #E8EEF5;
+  --text-soft: #C5D1DE;
+  --muted: #A9B8C9;
+  --link: #8DB8FF;
+  --link-hover: #B5D2FF;
+  --primary: #2B66D1;
+  --on-primary: #FFFFFF;
+  --on-primary-soft: #DCE8FB;
+  --pos: #6FDCAA;
+  --pos-pill-bg: #1C4A3B;
+  --pos-pill-text: #7FE3B4;
+  --neg: #FF9C93;
+  --neg-pill-bg: #4A2A2E;
+  --neg-pill-text: #FFB4AB;
+  --alert-bg: #40262E;
+  --alert-title: #FFB4AB;
+  --alert-text: #EBD9DC;
+  --input-border: #4A5B70;
+  --check: #5B94F0;
+
+  --font-sans: 'Plus Jakarta Sans', sans-serif; /* same fallback as the mockups (affects glyphs like ↗) */
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --radius-card: 20px;
+  --radius-tile: 14px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  --page-pad-top: 28px;
+  --page-pad-x: 20px;
+  --block-gap: 14px;
+  --tabbar-height: max(84px, calc(50px + env(safe-area-inset-bottom)));
+}

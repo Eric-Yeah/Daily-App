@@ -1,0 +1,81 @@
+import type { JSX } from 'preact';
+import { BlockView } from '../../components/Block';
+import { AlertCard, DayCard, NewsList, TaskCard, TrainingCard } from '../../components/Content';
+import { Header, useGreeting } from '../../components/Header';
+import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, NumberedCard, Sparkline } from '../../components/Market';
+import type { DataSource } from '../../data/types';
+import { formatDateLong, formatNumber, formatWeekday } from '../../lib/format';
+import { useSettings } from '../../lib/settings';
+import { useViewData } from './Today';
+
+export function Morning({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
+  const { timeZone } = useSettings();
+  const minuteKey = Math.floor(now.getTime() / 60000);
+  const data = useViewData(() => source.morning(now), [source, minuteKey]);
+  const title = useGreeting('Guten Morgen');
+  const weather = data?.weather.status === 'ok' ? data.weather.data : null;
+
+  return (
+    <>
+      <Header
+        dateLine={formatDateLong(now, timeZone)}
+        title={title}
+        pill={weather ? `${formatNumber(weather.tempC)}° · ${weather.text}` : undefined}
+      />
+      {switcher}
+
+      <BlockView block={data?.indices} skeletonHeight={60} hideWhenEmpty>
+        {(items) => <IndexStrip items={items} />}
+      </BlockView>
+
+      <BlockView block={data?.important} hideWhenEmpty>
+        {(items) => (items.length > 0 ? <NumberedCard title="Heute wichtig" items={items} /> : null)}
+      </BlockView>
+
+      <BlockView block={data?.depot} title="Depot" skeletonHeight={300}>
+        {(d) => (
+          <section class="card" aria-label="Depot gesamt">
+            <div class="card-label">Depot gesamt · Schlusskurse {formatWeekday(d.closeDay, 'UTC')}</div>
+            <DepotHeadline summary={d.summary} comparedTo="Vortag" />
+            <Sparkline values={d.history} />
+            <div class="divider" />
+            <GroupBars groups={d.groups} />
+          </section>
+        )}
+      </BlockView>
+
+      <BlockView block={data?.kpis} skeletonHeight={90} hideWhenEmpty>
+        {(k) => (
+          <KpiTiles
+            items={[
+              { label: 'Seit Kauf', pct: k.sinceBuy.pct, abs: k.sinceBuy.abs, sub: '' },
+              { label: 'Seit Jahresanfang', pct: k.ytd.pct, abs: k.ytd.abs, sub: '' },
+            ]}
+          />
+        )}
+      </BlockView>
+
+      <BlockView block={data?.alert} hideWhenEmpty>
+        {(alert) => (alert ? <AlertCard alert={alert} /> : null)}
+      </BlockView>
+
+      <BlockView block={data?.news} title="Meldungen zu deinen Themen" skeletonHeight={200}>
+        {(items) => <NewsList title="Meldungen zu deinen Themen" items={items} now={now} />}
+      </BlockView>
+
+      <BlockView block={data?.events} title="Markt heute">
+        {(events) => <EventList title="Markt heute" events={events} />}
+      </BlockView>
+
+      <BlockView block={data?.training} title="Training" skeletonHeight={260}>
+        {(t) => <TrainingCard training={t} />}
+      </BlockView>
+
+      <BlockView block={data?.day} title="Dein Tag">
+        {(entries) => <DayCard entries={entries} />}
+      </BlockView>
+
+      <TaskCard store={source.tasks} />
+    </>
+  );
+}

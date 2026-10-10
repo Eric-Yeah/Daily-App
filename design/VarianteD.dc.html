@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Daily Variante D</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',sans-serif}
+a{color:#8DB8FF}a:hover{color:#B5D2FF}
+</style>
+</helmet>
+<div style="width:390px;height:2530px;box-sizing:border-box;background:#1E2835;color:#E8EEF5;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;overflow:hidden">
+
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;padding:28px 20px 20px">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div>
+<div style="font-size:13px;font-weight:600;color:#A9B8C9">Montag, 12. Oktober</div>
+<h1 style="margin:4px 0 0;font-size:28px;line-height:34px;font-weight:800;letter-spacing:-0.02em">Guten Morgen, Eric</h1>
+</div>
+<div style="background:#2A3748;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:600">14° · bewölkt</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:#2A3748;border-radius:16px;padding:4px">
+<a href="VarianteD.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#FFFFFF;background:#2B66D1;text-decoration:none">Morgen</a>
+<a href="Nachmittag.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#A9B8C9;text-decoration:none">Nachmittag</a>
+<a href="Abend.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#A9B8C9;text-decoration:none">Abend</a>
+</div>
+
+<div style="display:flex;gap:8px;overflow-x:auto;margin:0 -20px;padding:0 20px">
+<sc-for list="{{indizes}}" as="i" hint-placeholder-count="5">
+<div style="flex:none;background:#2A3748;border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:12px;font-weight:600;color:#A9B8C9">{{i.name}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:{{i.color}}">{{i.change}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2B66D1;color:#FFFFFF;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#DCE8FB">Heute wichtig</div>
+<sc-for list="{{wichtig}}" as="w" hint-placeholder-count="3">
+<div style="display:flex;gap:12px;align-items:flex-start">
+<div style="flex:none;width:24px;height:24px;border-radius:50%;background:#FFFFFF;color:#2B66D1;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center">{{w.n}}</div>
+<div style="font-size:15px;line-height:22px;font-weight:600">{{w.text}}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<div style="font-size:12px;font-weight:600;color:#A9B8C9">Depot gesamt · Schlusskurse Freitag</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:34px;line-height:40px;font-weight:600;letter-spacing:-0.02em">48.215 €</div>
+<div style="background:#1C4A3B;color:#7FE3B4;border-radius:999px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600">▲ +0,42 %</div>
+</div>
+<div style="font-size:13px;color:#A9B8C9">+201 € gegenüber Vortag</div>
+<svg viewBox="0 0 320 64" width="100%" height="64" aria-hidden="true">
+<path d="M0 46 L40 40 L80 44 L120 30 L160 34 L200 22 L240 26 L280 14 L320 18 L320 64 L0 64 Z" fill="#8DB8FF" fill-opacity="0.14"/>
+<path d="M0 46 L40 40 L80 44 L120 30 L160 34 L200 22 L240 26 L280 14 L320 18" fill="none" stroke="#8DB8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<div style="height:1px;background:#3A4A5F"></div>
+<div style="display:flex;flex-direction:column;gap:14px">
+<sc-for list="{{gruppen}}" as="g" hint-placeholder-count="6">
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:600">
+<span>{{g.name}} <span style="font-weight:500;color:#A9B8C9">· {{g.anteil}} %</span></span>
+<span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:{{g.color}}">{{g.change}}</span>
+</div>
+<div style="height:6px;border-radius:3px;background:#1E2835"><div style="height:6px;border-radius:3px;background:{{g.color}};width:{{g.width}}"></div></div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="2">
+<div style="background:#2A3748;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#A9B8C9">{{k.label}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:22px;line-height:28px;font-weight:600;color:{{k.color}}">{{k.wert}}</span>
+<span style="font-size:12px;color:#A9B8C9">{{k.sub}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#40262E;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#FFB4AB">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB4AB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 L22 20 H2 Z"/><path d="M12 10 V14"/><path d="M12 17 V17.1"/></svg>
+Auffällig · Schwelle −3 % unterschritten
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline">
+<span style="font-size:20px;line-height:26px;font-weight:800">Halbleiter-ETF</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:#FFB4AB">−3,1 %</span>
+</div>
+<div style="font-size:14px;line-height:21px;color:#EBD9DC">Beispieltext: Kurzfassung der Meldung, die die Bewegung am ehesten erklärt, in 1 bis 2 Sätzen in der Sprache der Quelle.</div>
+<a href="#" style="font-size:14px;font-weight:700">Zum Original ↗</a>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:4px 0 0;font-size:18px;font-weight:800">Meldungen zu deinen Themen</h2>
+<sc-for list="{{news}}" as="n" hint-placeholder-count="3">
+<div style="background:#2A3748;border-radius:20px;padding:16px;display:flex;gap:14px;align-items:flex-start">
+<div style="flex:none;width:40px;height:40px;border-radius:12px;background:#1E2835;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#8DB8FF;display:flex;align-items:center;justify-content:center">{{n.zahl}}</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:6px">
+<span style="font-size:12px;font-weight:700;color:#8DB8FF">{{n.thema}} <span style="color:#A9B8C9;font-weight:600">· {{n.betrifft}}</span></span>
+<span style="font-size:16px;line-height:22px;font-weight:700">{{n.titel}}</span>
+<span style="font-size:14px;line-height:21px;color:#C5D1DE">Beispieltext: KI-Kurzfassung in 1 bis 2 Sätzen.</span>
+<span style="display:flex;justify-content:space-between;font-size:13px"><span style="color:#A9B8C9">{{n.quelle}}</span><a href="#" style="font-weight:700">Original ↗</a></span>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:18px;font-weight:800">Markt heute</h2>
+<sc-for list="{{termine}}" as="t" hint-placeholder-count="4">
+<div style="display:flex;gap:12px;align-items:center;font-size:14px;min-height:28px">
+<span style="flex:none;width:48px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:#8DB8FF">{{t.zeit}}</span>
+<span style="font-weight:600">{{t.titel}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h2 style="margin:0;font-size:18px;font-weight:800">Training</h2>
+<span style="font-size:12px;font-weight:700;border-radius:999px;padding:5px 10px;background:#1E2835;color:#8DB8FF">aus Overload</span>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="display:flex;flex-direction:column;gap:2px">
+<span style="font-size:24px;line-height:30px;font-weight:800">Pull-Tag</span>
+<span style="font-size:13px;color:#A9B8C9">Woche 3 · geplant 16:30</span>
+</div>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:#6FDCAA">4 von 4</span>
+<span style="font-size:12px;color:#A9B8C9">letzte Woche</span>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+<sc-for list="{{woche}}" as="w" hint-placeholder-count="7">
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+<div style="width:34px;height:34px;box-sizing:border-box;border-radius:50%;background:{{w.bg}};color:{{w.fg}};border:1px solid {{w.bd}};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{w.tag}}</div>
+<span style="font-size:11px;font-weight:600;color:#A9B8C9">{{w.plan}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="3">
+<div style="background:#1E2835;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#A9B8C9">{{s.label}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:24px;font-weight:600">{{s.wert}}</span>
+<span style="font-size:12px;color:#A9B8C9">{{s.sub}}</span>
+</div>
+</sc-for>
+</div>
+<a href="#" style="font-size:14px;font-weight:700">In Overload öffnen ↗</a>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+<h2 style="margin:0;font-size:18px;font-weight:800">Dein Tag</h2>
+<sc-for list="{{tag}}" as="d" hint-placeholder-count="4">
+<div style="display:flex;gap:12px;align-items:center">
+<div style="flex:none;width:48px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#8DB8FF">{{d.zeit}}</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:1px">
+<span style="font-size:15px;font-weight:700">{{d.titel}}</span>
+<span style="font-size:13px;color:#A9B8C9">{{d.sub}}</span>
+</div>
+<span style="flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:4px 8px;background:#1E2835;color:#8DB8FF">{{d.tag}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:18px;font-weight:800">Heute erledigen</h2>
+<label style="display:flex;gap:12px;align-items:center;font-size:15px;font-weight:600;min-height:44px"><input type="checkbox" style="width:22px;height:22px;accent-color:#5B94F0">Aufgabe eins</label>
+<label style="display:flex;gap:12px;align-items:center;font-size:15px;font-weight:600;min-height:44px"><input type="checkbox" checked style="width:22px;height:22px;accent-color:#5B94F0">Aufgabe zwei</label>
+<label style="display:flex;gap:12px;align-items:center;font-size:15px;font-weight:600;min-height:44px"><input type="checkbox" style="width:22px;height:22px;accent-color:#5B94F0">Aufgabe drei</label>
+<div style="display:flex;gap:8px">
+<input type="text" placeholder="Aufgabe hinzufügen" aria-label="Aufgabe hinzufügen" style="flex:1;min-width:0;height:44px;box-sizing:border-box;border:1px solid #4A5B70;border-radius:12px;background:#1E2835;color:#E8EEF5;padding:0 12px;font-family:inherit;font-size:15px">
+<button style="flex:none;height:44px;padding:0 16px;border:0;border-radius:12px;background:#2B66D1;color:#FFFFFF;font-family:inherit;font-size:15px;font-weight:700">Neu</button>
+</div>
+</div>
+
+</div>
+
+<div style="flex:none;height:84px;box-sizing:border-box;background:#18212C;border-top:1px solid #2F3D50;display:flex;justify-content:space-around;padding:10px 12px 0">
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#8DB8FF">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8DB8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2V4M12 20V22M2 12H4M20 12H22"/></svg>Heute</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 L9 11 L13 15 L21 6"/></svg>Depot</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9H16M8 13H16M8 17H12"/></svg>News</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>Mehr</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2530}}'>
+class Component extends DCLogic {
+renderVals() {
+const pos = '#6FDCAA', neg = '#FF9C93';
+return {
+indizes: [
+{ name: 'DAX', change: '+0,2 %', color: pos },
+{ name: 'S&P 500', change: '+0,5 %', color: pos },
+{ name: 'MSCI World', change: '+0,3 %', color: pos },
+{ name: 'Nasdaq 100', change: '+0,7 %', color: pos },
+{ name: 'MSCI EM', change: '−0,4 %', color: neg }
+],
+wichtig: [
+{ n: '1', text: 'Halbleiter-ETF liegt unter deiner Schwelle (−3,1 %)' },
+{ n: '2', text: 'US-Inflationsdaten um 14:30 Uhr' },
+{ n: '3', text: 'Deutsch-Klausur in 3 Tagen' }
+],
+gruppen: [
+{ name: 'Welt breit', anteil: '38', change: '+0,3 %', color: pos, width: '38%' },
+{ name: 'USA', anteil: '27', change: '+0,6 %', color: pos, width: '27%' },
+{ name: 'Europa', anteil: '14', change: '+0,1 %', color: pos, width: '14%' },
+{ name: 'Schwellenländer', anteil: '12', change: '−0,4 %', color: neg, width: '12%' },
+{ name: 'Halbleiter', anteil: '5', change: '−3,1 %', color: neg, width: '5%' },
+{ name: 'Sonstige Themen', anteil: '4', change: '−0,6 %', color: neg, width: '4%' }
+],
+woche: [
+{ tag: 'M', plan: 'Pull', bg: '#2B66D1', fg: '#FFFFFF', bd: '#2B66D1' },
+{ tag: 'D', plan: '', bg: 'transparent', fg: '#A9B8C9', bd: '#3A4A5F' },
+{ tag: 'M', plan: 'Push', bg: '#1E2835', fg: '#E8EEF5', bd: '#4A5B70' },
+{ tag: 'D', plan: '', bg: 'transparent', fg: '#A9B8C9', bd: '#3A4A5F' },
+{ tag: 'F', plan: 'Legs', bg: '#1E2835', fg: '#E8EEF5', bd: '#4A5B70' },
+{ tag: 'S', plan: 'Lauf', bg: '#1E2835', fg: '#E8EEF5', bd: '#4A5B70' },
+{ tag: 'S', plan: '', bg: 'transparent', fg: '#A9B8C9', bd: '#3A4A5F' }
+],
+stats: [
+{ label: 'Streak', wert: '3 Wo.', sub: 'in Folge' },
+{ label: 'Diese Woche', wert: '0 / 4', sub: 'Einheiten' },
+{ label: 'Zuletzt', wert: 'Legs', sub: 'Freitag' }
+],
+kpis: [
+{ label: 'Seit Kauf', wert: '+12,8 %', color: pos, sub: '+5.480 €' },
+{ label: 'Seit Jahresanfang', wert: '+9,1 %', color: pos, sub: '+4.020 €' }
+],
+news: [
+{ zahl: '5', thema: 'USA · Zinsen', betrifft: '5 Positionen', titel: 'Beispiel: Anleger warten auf US-Inflationsdaten', quelle: 'Quelle · vor 2 Std.' },
+{ zahl: '2', thema: 'Halbleiter', betrifft: '2 Positionen', titel: 'Beispiel: Chipwerte unter Druck', quelle: 'Quelle · vor 4 Std.' },
+{ zahl: '1', thema: 'Schwellenländer', betrifft: '1 Position', titel: 'Beispiel: Währungen geben nach', quelle: 'Quelle · vor 6 Std.' }
+],
+termine: [
+{ zeit: '09:00', titel: 'Einkaufsmanagerindex Eurozone' },
+{ zeit: '14:30', titel: 'US-Inflationsdaten' },
+{ zeit: '16:00', titel: 'Rede eines Notenbankers' },
+{ zeit: '20:00', titel: 'Quartalszahlen eines Top-Holdings' }
+],
+tag: [
+{ zeit: '07:45', titel: 'Schule', sub: 'Stundenplan aus Lanis', tag: 'Schule' },
+{ zeit: '13:30', titel: 'Lernen: Deutsch', sub: '90 Minuten Fokus-Timer', tag: 'Study' },
+{ zeit: 'Frist', titel: 'Deutsch-Klausur', sub: 'in 3 Tagen', tag: 'Study' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

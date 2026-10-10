@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Daily Nachmittag</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Plus Jakarta Sans',sans-serif}
+a{color:#8DB8FF}a:hover{color:#B5D2FF}
+</style>
+</helmet>
+<div style="width:390px;height:1560px;box-sizing:border-box;background:#1E2835;color:#E8EEF5;display:flex;flex-direction:column;font-family:'Plus Jakarta Sans',sans-serif;overflow:hidden">
+
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;padding:28px 20px 20px">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div>
+<div style="font-size:13px;font-weight:600;color:#A9B8C9">Montag, 12. Oktober · 14:32</div>
+<h1 style="margin:4px 0 0;font-size:28px;line-height:34px;font-weight:800;letter-spacing:-0.02em">Guten Nachmittag</h1>
+</div>
+<div style="background:#2A3748;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:600">Xetra offen</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:#2A3748;border-radius:16px;padding:4px">
+<a href="VarianteD.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#A9B8C9;text-decoration:none">Morgen</a>
+<a href="Nachmittag.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#FFFFFF;background:#2B66D1;text-decoration:none">Nachmittag</a>
+<a href="Abend.dc.html" style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:14px;font-weight:700;color:#A9B8C9;text-decoration:none">Abend</a>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div style="font-size:12px;font-weight:600;color:#A9B8C9">Depot heute bisher · Kurse ca. 15 Min. verzögert</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:34px;line-height:40px;font-weight:600;letter-spacing:-0.02em">48.350 €</div>
+<div style="background:#1C4A3B;color:#7FE3B4;border-radius:999px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600">▲ +0,28 %</div>
+</div>
+<div style="font-size:13px;color:#A9B8C9">+135 € gegenüber Freitagsschluss</div>
+<svg viewBox="0 0 320 110" width="100%" height="110" aria-hidden="true">
+<line x1="0" y1="62" x2="320" y2="62" stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5"/>
+<path d="M0 66 L20 60 L40 68 L60 52 L80 58 L100 44 L120 50 L140 36 L160 42 L180 32 L208 38 L208 110 L0 110 Z" fill="#8DB8FF" fill-opacity="0.14"/>
+<path d="M0 66 L20 60 L40 68 L60 52 L80 58 L100 44 L120 50 L140 36 L160 42 L180 32 L208 38" fill="none" stroke="#8DB8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="208" cy="38" r="4.5" fill="#8DB8FF"/>
+<line x1="208" y1="38" x2="320" y2="38" stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5"/>
+</svg>
+<div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:#A9B8C9">
+<span>09:00</span><span>12:00</span><span>15:00</span><span>17:30</span>
+</div>
+<div style="font-size:12px;color:#A9B8C9">Gestrichelt: Freitagsschluss · noch 2 Std. 58 Min. bis Handelsende</div>
+</div>
+
+<div style="display:flex;gap:8px;overflow-x:auto;margin:0 -20px;padding:0 20px">
+<sc-for list="{{indizes}}" as="i" hint-placeholder-count="5">
+<div style="flex:none;background:#2A3748;border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:12px;font-weight:600;color:#A9B8C9">{{i.name}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:{{i.color}}">{{i.change}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<h2 style="margin:0;font-size:18px;font-weight:800">Bewegung nach Gruppen</h2>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<sc-for list="{{gruppen}}" as="g" hint-placeholder-count="6">
+<div style="background:#1E2835;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:600;color:#C5D1DE">{{g.name}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:{{g.color}}">{{g.change}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<h2 style="margin:0;font-size:18px;font-weight:800">Termine von heute Morgen</h2>
+<div style="display:flex;gap:12px;align-items:flex-start">
+<span style="flex:none;width:48px;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#8DB8FF">14:30</span>
+<div style="display:flex;flex-direction:column;gap:3px">
+<span style="font-size:15px;font-weight:700">US-Inflationsdaten</span>
+<span style="font-size:14px;line-height:21px;color:#C5D1DE">Beispieltext: Ergebnis in einem Satz und wie der Markt seitdem reagiert hat.</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#FF9C93">DAX seit 14:30: −0,3 %</span>
+</div>
+</div>
+</div>
+
+<div style="background:#2A3748;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:baseline">
+<h2 style="margin:0;font-size:18px;font-weight:800">US-Start</h2>
+<span style="font-size:12px;font-weight:700;color:#8DB8FF">in 58 Min.</span>
+</div>
+<div style="font-size:13px;color:#A9B8C9">Futures vor Handelsbeginn um 15:30 Uhr</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<sc-for list="{{futures}}" as="f" hint-placeholder-count="2">
+<div style="background:#1E2835;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:12px;font-weight:600;color:#A9B8C9">{{f.name}}</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;color:{{f.color}}">{{f.change}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="background:#2B66D1;color:#FFFFFF;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#DCE8FB">Was bewegt den Markt gerade</div>
+<div style="font-size:15px;line-height:22px;font-weight:600">Beispieltext: Ein bis zwei Sätze der KI-Zusammenfassung zur aktuellen Lage, in der Sprache der Quelle.</div>
+<a href="#" style="font-size:14px;font-weight:700;color:#FFFFFF">Zum Original ↗</a>
+</div>
+
+</div>
+
+<div style="flex:none;height:84px;box-sizing:border-box;background:#18212C;border-top:1px solid #2F3D50;display:flex;justify-content:space-around;padding:10px 12px 0">
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#8DB8FF">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8DB8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2V4M12 20V22M2 12H4M20 12H22"/></svg>Heute</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 L9 11 L13 15 L21 6"/></svg>Depot</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9H16M8 13H16M8 17H12"/></svg>News</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#A9B8C9">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A9B8C9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>Mehr</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1560}}'>
+class Component extends DCLogic {
+renderVals() {
+const pos = '#6FDCAA', neg = '#FF9C93';
+return {
+indizes: [
+{ name: 'DAX', change: '+0,1 %', color: pos },
+{ name: 'Euro Stoxx 50', change: '+0,2 %', color: pos },
+{ name: 'MSCI World', change: '+0,3 %', color: pos },
+{ name: 'S&P-500-Future', change: '+0,2 %', color: pos },
+{ name: 'MSCI EM', change: '−0,4 %', color: neg }
+],
+gruppen: [
+{ name: 'Welt breit', change: '+0,3 %', color: pos },
+{ name: 'USA', change: '+0,4 %', color: pos },
+{ name: 'Europa', change: '+0,1 %', color: pos },
+{ name: 'Schwellenländer', change: '−0,4 %', color: neg },
+{ name: 'Halbleiter', change: '−2,6 %', color: neg },
+{ name: 'Sonstige Themen', change: '−0,3 %', color: neg }
+],
+futures: [
+{ name: 'S&P 500', change: '+0,2 %', color: pos },
+{ name: 'Nasdaq 100', change: '+0,3 %', color: pos }
+]
+};
+}
+}
+</script>
+</body>
+</html>
