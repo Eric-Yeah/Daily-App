@@ -202,14 +202,24 @@ await test('Depot: gleiche ISIN nur einmal je Konto', () =>
   ),
 );
 
-await test('Depot: WKN statt ISIN, aber eins von beiden ist Pflicht', () =>
+// A failed statement aborts the transaction, so every rejection gets its own `as` block.
+await test('Depot: WKN statt ISIN ist erlaubt, gleiche WKN nur einmal je Konto', () =>
   as('authenticated', OWNER, async () => {
     await db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('Nur WKN', 'A0RPWH', 1, 1)");
     await rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('x', 'A0RPWH', 1, 1)"), /duplicate key/);
-    await rejects(db.query("insert into daily.positions (name, quantity, cost_per_unit) values ('x', 1, 1)"), /check constraint/);
-    await rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('x', 'zu-kurz', 1, 1)"), /check constraint/);
-    await db.query("delete from daily.positions where wkn = 'A0RPWH'");
   }),
+);
+
+await test('Depot: ISIN oder WKN ist Pflicht', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.positions (name, quantity, cost_per_unit) values ('x', 1, 1)"), /check constraint/),
+  ),
+);
+
+await test('Depot: WKN wird auf 6 Zeichen geprüft', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('x', 'zu-kurz', 1, 1)"), /check constraint/),
+  ),
 );
 
 await test('Depot: Gruppe löschen lässt die Position ohne Gruppe stehen', () =>
