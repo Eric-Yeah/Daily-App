@@ -9,6 +9,7 @@ export interface Settings {
   timeZone: string;
   tradingEnd: string;
   hideAmounts: boolean;
+  lockTimeoutMin: number;
   showMockData: boolean;
 }
 
@@ -17,6 +18,7 @@ const DEFAULTS: Settings = {
   timeZone: DEFAULT_TIME_ZONE,
   tradingEnd: DEFAULT_TRADING_END,
   hideAmounts: false,
+  lockTimeoutMin: 5,
   showMockData: true,
 };
 
@@ -28,10 +30,19 @@ export function getSettings(): Settings {
   return current;
 }
 
-export function updateSettings(patch: Partial<Settings>): void {
+type Origin = 'user' | 'remote';
+const changeHooks = new Set<(patch: Partial<Settings>, origin: Origin) => void>();
+
+/** Lets the Supabase sync listen to changes without a circular import. */
+export function onSettingsChange(hook: (patch: Partial<Settings>, origin: Origin) => void): void {
+  changeHooks.add(hook);
+}
+
+export function updateSettings(patch: Partial<Settings>, origin: Origin = 'user'): void {
   current = { ...current, ...patch };
   storage.setJSON(KEY, current);
   listeners.forEach((l) => l(current));
+  changeHooks.forEach((h) => h(patch, origin));
 }
 
 export function useSettings(): Settings {

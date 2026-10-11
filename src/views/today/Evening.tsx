@@ -7,6 +7,7 @@ import { empty, type DataSource } from '../../data/types';
 import { formatDateLong, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { xetraStatus } from '../../lib/time';
+import { today } from '../../data/personal';
 import { marketPill } from './Afternoon';
 import { useViewData } from './Today';
 
@@ -81,7 +82,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
         {(items) => <KpiTiles items={items} columns={3} />}
       </BlockView>
 
-      <CloseDayCard store={source.tasks} training={data?.trainingDone ?? empty('')} />
+      <CloseDayCard store={source.tasks} notes={source.notes} day={today(now)} training={data?.trainingDone ?? empty('')} />
     </>
   );
 }

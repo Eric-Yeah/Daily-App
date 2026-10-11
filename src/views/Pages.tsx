@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'preact/hooks';
 import { Header } from '../components/Header';
+import { currentSession, signOut, useAuth } from '../lib/auth';
+import { disableLock, lockEnabled, lockErrorText, webAuthnLock } from '../lib/lock';
 import { isClockPinned } from '../lib/clock';
 import { updateSettings, useSettings } from '../lib/settings';
 import { parseHHMM } from '../lib/time';
@@ -41,7 +44,7 @@ export function MorePage() {
         <label class="setting">
           <span>
             Dein Name
-            <span class="setting__hint">Für „Guten Morgen, …“. Bleibt nur auf diesem Gerät.</span>
+            <span class="setting__hint">Für „Guten Morgen, …“. Steht nur in deinem Konto, nicht im Code.</span>
           </span>
           <input
             class="input"
@@ -67,6 +70,8 @@ export function MorePage() {
           <input type="checkbox" checked={s.showMockData} onChange={(e) => updateSettings({ showMockData: e.currentTarget.checked })} />
         </label>
       </section>
+
+      <SecuritySection />
 
       <section class="card gap-8">
         <h2>Markt</h2>
@@ -100,5 +105,108 @@ export function MorePage() {
         <p class="disclaimer">Version {__APP_VERSION__}</p>
       </section>
     </main>
+  );
+}
+
+const TIMEOUTS: [number, string][] = [
+  [0, 'sofort'],
+  [1, 'nach 1 Min.'],
+  [5, 'nach 5 Min.'],
+  [15, 'nach 15 Min.'],
+  [60, 'nach 1 Std.'],
+];
+
+function SecuritySection() {
+  const auth = useAuth();
+  const s = useSettings();
+  const [enabled, setEnabled] = useState(lockEnabled());
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    webAuthnLock.available().then(setAvailable);
+  }, []);
+
+  if (auth.status !== 'ready') return null;
+
+  const enroll = async () => {
+    setMessage('');
+    try {
+      await webAuthnLock.enroll();
+      setEnabled(true);
+      setMessage('Face ID ist eingerichtet. Ab dem nächsten Öffnen fragt Daily danach.');
+    } catch (e) {
+      setMessage(lockErrorText(e));
+    }
+  };
+
+  const disable = () => {
+    disableLock();
+    setEnabled(false);
+    setMessage('Die Sperre ist auf diesem Gerät aus.');
+  };
+
+  return (
+    <>
+      <section class="card gap-8">
+        <h2>Sicherheit</h2>
+        <div class="setting">
+          <span>
+            App-Sperre mit Face ID
+            <span class="setting__hint">
+              {enabled
+                ? 'An auf diesem Gerät. Schützt vor fremden Händen am entsperrten Handy.'
+                : available === false
+                  ? 'Dieses Gerät bietet kein Face ID oder Touch ID für Web-Apps.'
+                  : 'Beim Öffnen und nach einer Pause fragt Daily nach Face ID.'}
+            </span>
+          </span>
+          {enabled ? (
+            <button class="button button--secondary" type="button" onClick={disable}>
+              Ausschalten
+            </button>
+          ) : (
+            <button class="button" type="button" onClick={enroll} disabled={available === false}>
+              Einrichten
+            </button>
+          )}
+        </div>
+        <label class="setting">
+          <span>
+            Sperren
+            <span class="setting__hint">wenn Daily so lange im Hintergrund war</span>
+          </span>
+          <select
+            class="input"
+            value={String(s.lockTimeoutMin)}
+            onChange={(e) => updateSettings({ lockTimeoutMin: Number(e.currentTarget.value) })}
+          >
+            {TIMEOUTS.map(([v, label]) => (
+              <option key={v} value={String(v)}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {message && (
+          <p class="setting__hint" role="status">
+            {message}
+          </p>
+        )}
+      </section>
+
+      <section class="card gap-8">
+        <h2>Konto</h2>
+        <div class="setting">
+          <span>
+            Angemeldet
+            <span class="setting__hint">{currentSession()?.user.email}</span>
+          </span>
+          <button class="button button--secondary" type="button" onClick={() => void signOut()}>
+            Abmelden
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

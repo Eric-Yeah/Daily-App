@@ -1,14 +1,29 @@
 // The repository and the published site are PUBLIC. This check fails if a tracked file
 // contains a secret, a real e-mail address or a local machine path/name.
-// Run: npm run check:public   (also runs in GitHub Actions before every deploy)
+// Run: npm run check:public          (tracked source files)
+//      node scripts/check-public.mjs dist   (the built site: secrets only, libraries may contain e-mails)
+// Both run in GitHub Actions before every deploy.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
-const files = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
-  .split('\0')
-  .filter((f) => f && !/\.(png|jpg|jpeg|gif|webp|ico|woff2?|pdf)$/i.test(f) && f !== 'package-lock.json');
+const buildDir = process.argv[2];
+const BINARY = /\.(png|jpg|jpeg|gif|webp|ico|woff2?|pdf)$/i;
 
-const RULES = [
+function walk(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    return statSync(path).isDirectory() ? walk(path) : [path];
+  });
+}
+
+const files = (
+  buildDir
+    ? walk(buildDir)
+    : execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter((f) => f !== 'package-lock.json')
+).filter((f) => f && !BINARY.test(f));
+
+const SECRET_RULES = [
   ['Supabase-Secret-Key', /sb_secret_[A-Za-z0-9_-]{8,}/],
   ['Anthropic-Key', /sk-ant-[A-Za-z0-9_-]{8,}/],
   ['Groq-Key', /gsk_[A-Za-z0-9]{10,}/],
@@ -17,6 +32,8 @@ const RULES = [
   ['AWS-Key', /AKIA[0-9A-Z]{16}/],
   ['Private Key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
   ['Datenbank-URL', /postgres(?:ql)?:\/\/[^\s'"`]*@/],
+];
+const PRIVACY_RULES = [
   ['Lokaler Pfad', /\/Users\/[A-Za-z0-9._-]+\//],
   ['Rechnername', /MacBook-[A-Za-z0-9-]+|[A-Za-z0-9-]+\.local\b(?!Storage)/],
 ];
@@ -39,8 +56,11 @@ for (const file of files) {
   const lines = text.split('\n');
   lines.forEach((line, i) => {
     const where = `${file}:${i + 1}`;
-    for (const [name, re] of RULES) if (re.test(line)) problems.push(`${where}  ${name}`);
-    for (const m of line.match(EMAIL) ?? []) if (!EMAIL_OK.test(m)) problems.push(`${where}  E-Mail-Adresse`);
+    for (const [name, re] of SECRET_RULES) if (re.test(line)) problems.push(`${where}  ${name}`);
+    if (!buildDir) {
+      for (const [name, re] of PRIVACY_RULES) if (re.test(line)) problems.push(`${where}  ${name}`);
+      for (const m of line.match(EMAIL) ?? []) if (!EMAIL_OK.test(m)) problems.push(`${where}  E-Mail-Adresse`);
+    }
     for (const m of line.match(JWT) ?? []) {
       try {
         const payload = JSON.parse(Buffer.from(m.split('.')[1], 'base64url').toString('utf8'));

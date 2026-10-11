@@ -14,6 +14,7 @@ import {
   ok,
   type AfternoonData,
   type DataSource,
+  type DayNoteStore,
   type EveningData,
   type GroupMove,
   type IntradaySeries,
@@ -173,10 +174,24 @@ function createMockTasks(): TaskStore {
   };
 }
 
+export function createMockNotes(): DayNoteStore {
+  const notes = new Map<string, string>();
+  return {
+    async get(day) {
+      return ok(notes.get(day) ?? '');
+    },
+    async set(day, note) {
+      notes.set(day, note);
+      return true;
+    },
+  };
+}
+
 export function createMockSource(): DataSource {
   return {
     kind: 'mock',
     tasks: createMockTasks(),
+    notes: createMockNotes(),
 
     async morning(now): Promise<MorningData> {
       const { tradingEnd } = getSettings();

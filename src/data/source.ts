@@ -1,8 +1,11 @@
+import { currentSession } from '../lib/auth';
 import { getSettings } from '../lib/settings';
-import { createMockSource } from './mock';
-import { empty, type DataSource, type TaskStore } from './types';
+import { createMockNotes, createMockSource } from './mock';
+import { createSupabaseNotes, createSupabaseTasks } from './personal';
+import { empty, type DataSource, type DayNoteStore, type TaskStore } from './types';
 
-// Without mock data and before Supabase is connected (M2), every block shows an honest empty state.
+// Market data (prices, news, events …) is still mock data until M4/M5, clearly marked in the UI.
+// Personal data (tasks, day notes) comes from Supabase as soon as you are signed in.
 const NO_SOURCE = 'Noch keine Datenquelle verbunden.';
 
 const emptyTasks: TaskStore = {
@@ -16,11 +19,12 @@ const emptyTasks: TaskStore = {
   },
 };
 
-function createEmptySource(): DataSource {
+function createEmptySource(tasks: TaskStore, notes: DayNoteStore): DataSource {
   const e = <T>() => empty<T>(NO_SOURCE);
   return {
     kind: 'none',
-    tasks: emptyTasks,
+    tasks,
+    notes,
     async morning() {
       return {
         weather: e(),
@@ -44,10 +48,26 @@ function createEmptySource(): DataSource {
   };
 }
 
-let mock: DataSource | null = null;
-let none: DataSource | null = null;
+const cache = new Map<string, DataSource>();
 
 export function getDataSource(): DataSource {
-  if (getSettings().showMockData) return (mock ??= createMockSource());
-  return (none ??= createEmptySource());
+  const userId = currentSession()?.user.id ?? '';
+  const mock = getSettings().showMockData;
+  const key = `${userId}|${mock}`;
+  let source = cache.get(key);
+  if (!source) {
+    const personal = userId
+      ? { tasks: createSupabaseTasks(), notes: createSupabaseNotes() }
+      : mock
+        ? null
+        : { tasks: emptyTasks, notes: createMockNotes() };
+    if (mock) {
+      const base = createMockSource();
+      source = personal ? { ...base, ...personal } : base;
+    } else {
+      source = createEmptySource(personal!.tasks, personal!.notes);
+    }
+    cache.set(key, source);
+  }
+  return source;
 }

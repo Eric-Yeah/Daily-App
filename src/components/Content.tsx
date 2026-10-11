@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { AlertItem, Block, DayEntry, NewsItem, Task, TaskStore, Training } from '../data/types';
+import type { AlertItem, Block, DayEntry, DayNoteStore, NewsItem, Task, TaskStore, Training } from '../data/types';
 import { formatAge, formatPct, formatPositions } from '../lib/format';
 import { InlineState } from './Block';
 import { ExternalLink } from './Market';
@@ -196,10 +196,35 @@ export function TaskCard({ store }: { store: TaskStore }) {
 }
 
 /** "Tag abschließen": training done, today's tasks, one line about the day. */
-export function CloseDayCard({ store, training }: { store: TaskStore; training: Block<{ label: string; done: boolean }> }) {
+export function CloseDayCard({
+  store,
+  notes,
+  day,
+  training,
+}: {
+  store: TaskStore;
+  notes: DayNoteStore;
+  day: string;
+  training: Block<{ label: string; done: boolean }>;
+}) {
   const block = useTasks(store);
   const [note, setNote] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  useEffect(() => {
+    let alive = true;
+    notes.get(day).then((b) => alive && b.status === 'ok' && setNote(b.data));
+    return () => {
+      alive = false;
+    };
+  }, [notes, day]);
+
+  const save = async (e: Event) => {
+    e.preventDefault();
+    setStatus('saving');
+    setStatus((await notes.set(day, note.trim())) ? 'saved' : 'error');
+  };
+
   return (
     <section class="card gap-12">
       <h2>Tag abschließen</h2>
@@ -216,14 +241,7 @@ export function CloseDayCard({ store, training }: { store: TaskStore; training: 
             {t.done ? t.title : `${t.title}, rutscht auf morgen`}
           </label>
         ))}
-      <form
-        class="input-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // Saved to `daily.day_notes` from M2 on.
-          setSaved(note.trim().length > 0);
-        }}
-      >
+      <form class="input-row" onSubmit={save}>
         <input
           class="input"
           type="text"
@@ -233,16 +251,21 @@ export function CloseDayCard({ store, training }: { store: TaskStore; training: 
           maxLength={280}
           onInput={(e) => {
             setNote(e.currentTarget.value);
-            setSaved(false);
+            setStatus('idle');
           }}
         />
-        <button class="button" type="submit">
+        <button class="button" type="submit" disabled={status === 'saving'}>
           Speichern
         </button>
       </form>
-      {saved && (
+      {status === 'saved' && (
         <p class="saved-note" role="status">
-          Gespeichert (nur in dieser Sitzung, bis die Anmeldung da ist).
+          Gespeichert.
+        </p>
+      )}
+      {status === 'error' && (
+        <p class="saved-note block-state--error" role="alert">
+          Speichern gerade nicht möglich. Versuch es gleich nochmal.
         </p>
       )}
     </section>

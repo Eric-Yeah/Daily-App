@@ -873,3 +873,71 @@
 .card-sub--loose {
   line-height: 19px;
 }
+
+/* ---------- Login, lock, account ---------- */
+.page--plain {
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.field .input {
+  flex: none;
+  width: 100%;
+}
+.button--wide {
+  width: 100%;
+}
+.button--secondary {
+  background: var(--bg);
+  color: var(--link);
+  border: 1px solid var(--input-border);
+}
+.link-button {
+  align-self: center;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--link);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.form-error {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--alert-title);
+}
+.lock {
+  min-height: 100dvh;
+  justify-content: center;
+}
+.lock__icon {
+  align-self: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--link);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lock__title {
+  text-align: center;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.setting select.input {
+  flex: none;
+  width: 140px;
+}

@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run check:public
       - run: npm test
+      - run: npm run test:db
       - run: npm run build
         env:
           # Public values only (set under Settings → Secrets and variables → Actions → Variables).
@@ -34,11 +35,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
       - name: Keine Geheimnisse im Build
-        run: |
-          if grep -rEl 'service_role|sb_secret_|sk-ant-|SUPABASE_DB_URL|postgres(ql)?://' dist; then
-            echo "Verdächtiger Schlüssel im Build gefunden" >&2
-            exit 1
-          fi
+        run: node scripts/check-public.mjs dist
 
       - uses: actions/upload-pages-artifact@v4
         if: github.ref == 'refs/heads/main'

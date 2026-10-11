@@ -10,14 +10,17 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/make-icons.mjs",
-    "check:public": "node scripts/check-public.mjs"
+    "check:public": "node scripts/check-public.mjs",
+    "test:db": "node scripts/test-db.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "5.3.0",
     "@fontsource/plus-jakarta-sans": "5.3.0",
+    "@supabase/supabase-js": "2.117.2",
     "preact": "10.29.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@preact/preset-vite": "2.10.6",
     "@types/node": "^24.13.6",
     "typescript": "6.0.3",

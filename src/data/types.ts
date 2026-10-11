@@ -144,11 +144,17 @@ export interface EveningData {
 }
 
 export interface DataSource {
-  kind: 'mock' | 'none';
+  kind: 'mock' | 'none' | 'live';
   morning(now: Date): Promise<MorningData>;
   afternoon(now: Date): Promise<AfternoonData>;
   evening(now: Date): Promise<EveningData>;
   tasks: TaskStore;
+  notes: DayNoteStore;
+}
+
+export interface DayNoteStore {
+  get(day: string): Promise<Block<string>>;
+  set(day: string, note: string): Promise<boolean>;
 }
 
 export interface TaskStore {
