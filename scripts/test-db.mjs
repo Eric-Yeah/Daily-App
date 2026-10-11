@@ -282,6 +282,42 @@ await test('Server zählt KI-Kosten zusammen', () =>
   }),
 );
 
+// --- Kurse (0006) ---
+await asCommit('service_role', null, async () => {
+  await db.query("insert into daily.price_snapshots (symbol, ts, price) values ('TEST.X', '2026-10-12T08:00:00Z', 101.5)");
+  await db.query("insert into daily.price_daily (symbol, day, close) values ('TEST.X', '2026-10-09', 100)");
+});
+
+await test('Kurse: Besitzer liest, fremdes Konto und anon nicht', async () => {
+  await as('authenticated', OWNER, async () => {
+    assert.equal((await db.query('select * from daily.price_snapshots')).rowCount, 1);
+    assert.equal((await db.query('select * from daily.price_daily')).rowCount, 1);
+  });
+  await as('authenticated', OTHER, async () => {
+    assert.equal((await db.query('select * from daily.price_snapshots')).rowCount, 0);
+    assert.equal((await db.query('select * from daily.price_daily')).rowCount, 0);
+  });
+  await as('anon', null, () => rejects(db.query('select * from daily.price_snapshots'), /permission denied/));
+});
+
+await test('Kurse: nur der Server schreibt', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.price_snapshots (symbol, ts, price) values ('X', now(), 1)"), /permission denied/),
+  ).then(() =>
+    as('authenticated', OWNER, () => rejects(db.query("update daily.price_daily set close = 1"), /permission denied/)),
+  ),
+);
+
+await test('Kurse: Preis muss positiv sein, Symbol begrenzt', () =>
+  as('service_role', null, () =>
+    rejects(db.query("insert into daily.price_snapshots (symbol, ts, price) values ('X', now(), 0)"), /check constraint/),
+  ).then(() =>
+    as('service_role', null, () =>
+      rejects(db.query('insert into daily.price_daily (symbol, day, close) values ($1, current_date, 1)', ['x'.repeat(41)]), /check constraint/),
+    ),
+  ),
+);
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

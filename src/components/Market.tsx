@@ -207,3 +207,13 @@ export function ExternalLink({ href, children, class: className = 'link-strong' 
     </a>
   );
 }
+
+/** Hint under a depot card: positions without a price are left out of the numbers, never estimated. */
+export function MissingNote({ count }: { count?: number }) {
+  if (!count) return null;
+  return (
+    <div class="note" role="note">
+      {count === 1 ? '1 Position ohne Kurs, nicht eingerechnet.' : `${count} Positionen ohne Kurs, nicht eingerechnet.`}
+    </div>
+  );
+}

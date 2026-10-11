@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { AlertCard, DayCard, NewsList, TaskCard, TrainingCard } from '../../components/Content';
 import { Header, useGreeting } from '../../components/Header';
-import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, NumberedCard, Sparkline } from '../../components/Market';
+import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, MissingNote, NumberedCard, Sparkline } from '../../components/Market';
 import type { DataSource } from '../../data/types';
 import { formatDateLong, formatNumber, formatWeekday } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
@@ -40,6 +40,7 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
             <Sparkline values={d.history} />
             <div class="divider" />
             <GroupBars groups={d.groups} />
+            <MissingNote count={d.missing} />
           </section>
         )}
       </BlockView>

@@ -85,7 +85,7 @@ export function DepotHome() {
         </section>
       ) : (
         <>
-          <p class="note">Aktuelle Kurse und Tagesänderungen kommen, sobald die Kursabfrage eingerichtet ist (M4).</p>
+          <p class="note">Kurse und Tagesänderungen siehst du im Tab „Heute“. Die Kursabfrage läuft zu Handelszeiten alle 30 Minuten.</p>
           {sections.map((s) => (
             <PositionSection key={s.group?.id ?? 'none'} group={s.group} items={s.items} hidden={hideAmounts} />
           ))}

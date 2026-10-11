@@ -22,7 +22,7 @@ export function AlertCard({ alert }: { alert: AlertItem }) {
         <span class="alert__change">{formatPct(alert.changePct, 1)}</span>
       </div>
       <p class="alert__text">{alert.summary}</p>
-      <ExternalLink href={alert.url}>Zum Original ↗</ExternalLink>
+      {alert.url && <ExternalLink href={alert.url}>Zum Original ↗</ExternalLink>}
     </section>
   );
 }

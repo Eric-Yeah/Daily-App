@@ -41,6 +41,10 @@ describe('xetraStatus', () => {
     expect(xetraStatus(berlin('2026-10-12T17:30'), opts)).toBe('closed');
     expect(xetraStatus(berlin('2026-10-10T12:00'), opts)).toBe('holiday'); // Saturday
   });
+  it('knows the Xetra holidays by default', () => {
+    expect(xetraStatus(berlin('2026-12-24T12:00'), { tradingEnd: '17:30' })).toBe('holiday');
+    expect(xetraStatus(berlin('2026-12-23T12:00'), { tradingEnd: '17:30' })).toBe('open');
+  });
   it('treats listed holidays as closed', () => {
     expect(xetraStatus(berlin('2026-12-24T12:00'), { ...opts, holidays: ['2026-12-24'] })).toBe('holiday');
   });

@@ -24,6 +24,7 @@ export interface Position {
   lossThresholdPct: number | null;
   topics: string[];
   manualPrice: number | null;
+  providerSymbol: string | null; // price provider symbol; found automatically per ISIN, editable
   archived: boolean;
 }
 
@@ -66,6 +67,7 @@ const toPosition = (r: Row): Position => ({
   lossThresholdPct: r.loss_threshold_pct === null || r.loss_threshold_pct === undefined ? null : Number(r.loss_threshold_pct),
   topics: (r.topics as string[]) ?? [],
   manualPrice: r.manual_price === null || r.manual_price === undefined ? null : Number(r.manual_price),
+  providerSymbol: (r.provider_symbol as string | null) ?? null,
   archived: Boolean(r.archived),
 });
 
@@ -81,6 +83,7 @@ const fromPosition = (p: PositionDraft): Row => ({
   topics: p.topics,
   manual_price: p.manualPrice,
   manual_price_at: p.manualPrice ? new Date().toISOString() : null,
+  provider_symbol: p.providerSymbol,
   archived: p.archived,
   updated_at: new Date().toISOString(),
 });
@@ -221,6 +224,7 @@ function createMemoryDepot(): DepotStore {
             lossThresholdPct: null,
             topics,
             manualPrice: null,
+            providerSymbol: null,
             archived: false,
           });
           created++;

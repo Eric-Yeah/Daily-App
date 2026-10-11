@@ -116,7 +116,7 @@ export interface MorningData {
   weather: Block<{ tempC: number; text: string }>;
   indices: Block<IndexQuote[]>;
   important: Block<string[]>;
-  depot: Block<{ summary: DepotSummary; closeDay: Date; history: number[]; groups: GroupMove[] }>;
+  depot: Block<{ summary: DepotSummary; closeDay: Date; history: number[]; groups: GroupMove[]; missing?: number }>;
   kpis: Block<{ sinceBuy: { pct: number; abs: number }; ytd: { pct: number; abs: number } }>;
   alert: Block<AlertItem | null>;
   news: Block<NewsItem[]>;
@@ -126,7 +126,7 @@ export interface MorningData {
 }
 
 export interface AfternoonData {
-  depot: Block<{ summary: DepotSummary; prevCloseDay: Date; intraday: IntradaySeries }>;
+  depot: Block<{ summary: DepotSummary; prevCloseDay: Date; intraday: IntradaySeries; missing?: number }>;
   indices: Block<IndexQuote[]>;
   groups: Block<GroupMove[]>;
   morningEvents: Block<MorningEventResult[]>;
@@ -135,7 +135,7 @@ export interface AfternoonData {
 }
 
 export interface EveningData {
-  balance: Block<{ summary: DepotSummary; prevCloseDay: Date; intraday: IntradaySeries; groups: GroupMove[] }>;
+  balance: Block<{ summary: DepotSummary; prevCloseDay: Date; intraday: IntradaySeries; groups: GroupMove[]; missing?: number }>;
   drivers: Block<{ items: string[]; sourcesUrl: string }>;
   news: Block<NewsItem[]>;
   us: Block<{ indices: UsIndexCurve[]; sessionStart: string; sessionEnd: string }>;

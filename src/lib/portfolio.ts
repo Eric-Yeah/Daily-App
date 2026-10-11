@@ -137,3 +137,29 @@ export function computeDepot(positions: PositionInput[], groups: GroupInput[], d
 export function costBasisOf(positions: Pick<PositionInput, 'quantity' | 'costPerUnit'>[]): number {
   return positions.reduce((s, p) => s + p.quantity * p.costPerUnit, 0);
 }
+
+export interface PeriodChange {
+  pct: number;
+  abs: number;
+}
+
+export interface PeriodChanges {
+  week: PeriodChange | null;
+  month: PeriodChange | null;
+  year: PeriodChange | null;
+}
+
+/**
+ * Change of the depot since the start of the week, month and year (value now versus the last close before).
+ * A period is null as soon as one priced position lacks its start value: no partial sums.
+ */
+export function periodChanges(positions: PositionInput[]): PeriodChanges {
+  const priced = positions.filter((p) => p.price && p.quantity > 0);
+  const since = (key: 'weekStart' | 'monthStart' | 'yearStart'): PeriodChange | null => {
+    if (!priced.length || priced.some((p) => p.price![key] === undefined)) return null;
+    const now = priced.reduce((s, p) => s + p.quantity * p.price!.last, 0);
+    const base = priced.reduce((s, p) => s + p.quantity * p.price![key]!, 0);
+    return base > 0 ? { pct: relChange(now, base), abs: now - base } : null;
+  };
+  return { week: since('weekStart'), month: since('monthStart'), year: since('yearStart') };
+}

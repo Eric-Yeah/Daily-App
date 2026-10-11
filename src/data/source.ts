@@ -1,12 +1,14 @@
 import { currentSession } from '../lib/auth';
 import { getSettings } from '../lib/settings';
 import { liveAfternoon, liveEvening, liveMorning } from './live';
+import { marketAfternoon, marketEvening, marketMorning } from './market';
 import { createMockNotes, createMockSource } from './mock';
 import { createSupabaseNotes, createSupabaseTasks } from './personal';
 import { empty, type DataSource, type DayNoteStore, type TaskStore } from './types';
 
-// Market data (prices, indices, US market) is still mock data until M4, clearly marked in the UI.
-// Signed in, everything else is real: tasks, day notes, news, events, briefings, training, "Dein Tag".
+// Signed in with positions, market data is real too (prices, indices, US market, from the price tables
+// that the Edge Function "daily-prices" fills), as are tasks, day notes, news, events, briefings,
+// training and "Dein Tag". Without positions the base source (mock data or empty states) is shown.
 const NO_SOURCE = 'Noch keine Datenquelle verbunden.';
 
 const emptyTasks: TaskStore = {
@@ -54,16 +56,16 @@ function withLive(base: DataSource): DataSource {
   return {
     ...base,
     async morning(now) {
-      const [b, l] = await Promise.all([base.morning(now), liveMorning(now)]);
-      return { ...b, ...l };
+      const [b, l, m] = await Promise.all([base.morning(now), liveMorning(now), marketMorning(now)]);
+      return { ...b, ...m, ...l };
     },
     async afternoon(now) {
-      const [b, l] = await Promise.all([base.afternoon(now), liveAfternoon(now)]);
-      return { ...b, ...l };
+      const [b, l, m] = await Promise.all([base.afternoon(now), liveAfternoon(now), marketAfternoon(now)]);
+      return { ...b, ...m, ...l };
     },
     async evening(now) {
-      const [b, l] = await Promise.all([base.evening(now), liveEvening(now)]);
-      return { ...b, ...l };
+      const [b, l, m] = await Promise.all([base.evening(now), liveEvening(now), marketEvening(now)]);
+      return { ...b, ...m, ...l };
     },
   };
 }

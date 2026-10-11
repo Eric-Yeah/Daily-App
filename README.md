@@ -14,13 +14,13 @@ Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** un
 | M1 | Oberfläche mit Beispieldaten, PWA, Deploy | **fertig** |
 | M2 | Supabase, Login, Face-ID-Sperre | **fertig** |
 | M3 | Depot: Positionen, Gruppen, CSV-Import | **fertig** |
-| M4 | Kurse (kostenlose Anbieter) | zurückgestellt |
+| M4 | Kurse (Yahoo + EODHD, kostenlos) | **fertig** (einmal einrichten, siehe „Kurse“) |
 | M5 | News und KI (Claude Haiku 5.5) | **fertig** (KI-Schlüssel trägst du selbst ein) |
 | M6 | Briefings vorab + Push | **fertig** |
 | M7 | Overload und Study App | **fertig** (Training ohne Plan) |
 | M8 | Feinschliff, Passkey-Login | offen |
 
-Nur noch **Kurse, Depotwerte, Indizes und US-Markt** sind Beispieldaten (bis M4). Das steht oben als „Beispieldaten · keine echten Kurse“ und lässt sich unter **Mehr → Beispieldaten anzeigen** ausschalten. **Echt** sind: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App.
+Beispieldaten gibt es nur noch, solange du **keine Positionen** angelegt hast. Dann steht oben „Beispieldaten · keine echten Kurse“; unter **Mehr → Beispieldaten anzeigen** schaltest du sie aus. Sobald Positionen da sind, ist alles echt: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Kurse, Indizes und US-Markt, Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App. Das Wetter fehlt noch.
 
 ## Lokal starten
 
@@ -133,6 +133,32 @@ npx supabase functions deploy daily-news daily-briefing --project-ref mhyunfeira
 ```sql
 select jobname, schedule, active from cron.job where jobname like 'daily-%';
 ```
+
+## Kurse (ab M4)
+
+**So läuft es:** Die Edge Function `daily-prices` holt zu Handelszeiten alle 30 Minuten die Kurse und legt sie in der Datenbank ab (`price_snapshots` für den Tagesverlauf, `price_daily` für Schlusskurse). Die App liest nur aus der eigenen Datenbank und ruft nie einen Kursanbieter selbst auf.
+- **Yahoo Finance** (ohne Schlüssel): Kurse deiner Positionen, DAX, Euro Stoxx 50, S&P 500, Nasdaq 100 und die beiden US-Futures, ca. 15 Minuten verzögert. Zu jeder Position wird das Kurssymbol automatisch über die ISIN gesucht (Xetra bevorzugt) und in der Position gespeichert. Du kannst es im Positionsformular selbst eintragen.
+- **EODHD** (kostenlos, optional): holt abends den Schlusskurs nach, wenn Yahoo ihn für eine Xetra-Position nicht geliefert hat (höchstens 15 Abrufe pro Tag).
+- Zeiten: Xetra Mo bis Fr von 09:00 bis Handelsende, US-Indizes 15:30 bis 22:00 (Berliner Zeit, Sommer-/Winterzeit passt sich an). Feiertage ohne Handel liefern keine neuen Kurse.
+- **Ehrlich:** Yahoo bietet diese Schnittstelle inoffiziell an, die Nutzungsbedingungen erlauben automatische Abrufe nicht ausdrücklich. Sie kann ohne Vorwarnung ausfallen oder sich ändern. Dann bleiben die Kurse auf dem letzten Stand, und die App zeigt „—“ oder „ohne Kurs“. Es wird nie geschätzt oder erfunden. Positionen in anderen Währungen als Euro werden nicht umgerechnet und stehen unter „ohne Kurs“. Ein von dir eingetragener manueller Kurs gilt nur als Wert ohne Tagesänderung.
+- MSCI World und MSCI Emerging Markets haben keine kostenlose Indexquelle und fehlen deshalb in der Indexzeile.
+
+**Einmalig einrichten (du klickst):**
+1. Supabase → *SQL Editor* → *+ New query* → Inhalt von [`supabase/migrations/0006_prices.sql`](supabase/migrations/0006_prices.sql) einfügen → *Run*. Danach genauso [`supabase/migrations/0007_cron_prices.sql`](supabase/migrations/0007_cron_prices.sql) (der Zeitplan).
+2. Function veröffentlichen (im Projektordner im Terminal):
+   ```bash
+   npx supabase functions deploy daily-prices --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
+   ```
+3. Optional, für den Schlusskurs-Rückfall: auf eodhd.com ein kostenloses Konto anlegen, den API-Schlüssel kopieren und in Supabase → *Edge Functions* → *Secrets* → *Add new secret* als `DAILY_EODHD_API_KEY` eintragen (nie in den Chat oder in Code).
+4. Erster Test: Supabase → *Edge Functions* → `daily-prices` → *Test*; oder abwarten, bis der Zeitplan läuft. Danach zeigt `select symbol, count(*) from daily.price_snapshots group by symbol;`, welche Kurse angekommen sind.
+
+**Prüfen, ob der Zeitplan läuft** (SQL Editor):
+```sql
+select jobname, schedule, active from cron.job where jobname = 'daily-prices';
+select status, return_message, start_time from cron.job_run_details order by start_time desc limit 10;
+```
+
+**Gut zu wissen:** Der Verlauf füllt sich erst ab dem ersten Lauf. Die Schlusskurse des letzten Jahres holt die Function beim ersten Mal nach, dadurch sind „Woche, Monat, Jahr“ und die Vortagsänderung sofort da. Die Xetra-Feiertage stehen in `src/lib/time.ts` und müssen einmal im Jahr ergänzt werden.
 
 ## Training und „Dein Tag“ (ab M7)
 

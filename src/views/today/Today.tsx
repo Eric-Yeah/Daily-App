@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { MockBanner } from '../../components/Header';
 import { ViewSwitcher } from '../../components/Segmented';
+import { useMarketLive } from '../../data/market';
 import { getDataSource } from '../../data/source';
 import { useNow } from '../../lib/clock';
 import { useSettings } from '../../lib/settings';
@@ -28,8 +29,9 @@ export function Today() {
   };
 
   const source = getDataSource();
+  const marketLive = useMarketLive();
   const switcher = <ViewSwitcher value={view} onChange={choose} />;
-  const banner = source.kind === 'mock' ? <MockBanner /> : null;
+  const banner = source.kind === 'mock' && !marketLive ? <MockBanner /> : null;
 
   return (
     <main class="page" id="today-panel" role="tabpanel" aria-labelledby={`tab-${view}`}>

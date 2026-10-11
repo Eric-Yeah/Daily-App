@@ -1,7 +1,7 @@
 import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { Header, useGreeting } from '../../components/Header';
-import { Axis, ChangeTiles, DepotHeadline, ExternalLink, IndexStrip, IntradayChart } from '../../components/Market';
+import { Axis, ChangeTiles, DepotHeadline, ExternalLink, IndexStrip, IntradayChart, MissingNote } from '../../components/Market';
 import type { DataSource } from '../../data/types';
 import { formatDateLong, formatDuration, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
@@ -60,6 +60,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
               <div class="note">
                 Gestrichelt: {closeName} · {progress}
               </div>
+              <MissingNote count={d.missing} />
             </section>
           );
         }}

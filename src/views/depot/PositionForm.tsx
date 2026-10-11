@@ -20,6 +20,7 @@ export function PositionFormPage({ id }: { id?: string }) {
 interface Errors {
   name?: string;
   isin?: string;
+  symbol?: string;
   quantity?: string;
   cost?: string;
   threshold?: string;
@@ -40,6 +41,7 @@ function PositionForm({
   const { lossThresholdPct } = useSettings();
   const [name, setName] = useState(existing?.name ?? '');
   const [isin, setIsin] = useState(existing?.isin ?? '');
+  const [symbol, setSymbol] = useState(existing?.providerSymbol ?? '');
   const [quantity, setQuantity] = useState(formatInputNumber(existing?.quantity));
   const [cost, setCost] = useState(formatInputNumber(existing?.costPerUnit));
   const [groupId, setGroupId] = useState<string>(existing?.groupId ?? '');
@@ -67,6 +69,8 @@ function PositionForm({
     const next: Errors = {};
     if (!name.trim()) next.name = 'Bitte einen Namen eingeben.';
     if (!isValidIsin(isin)) next.isin = 'Diese ISIN ist ungültig (12 Zeichen, Prüfziffer stimmt nicht).';
+    const sym = symbol.trim();
+    if (sym && !/^[A-Za-z0-9.^=-]{1,40}$/.test(sym)) next.symbol = 'Nur Buchstaben, Ziffern und . ^ = - erlaubt.';
     if (q === null || q < 0) next.quantity = 'Bitte eine Stückzahl eingeben, z. B. 12,5.';
     if (c === null || c < 0) next.cost = 'Bitte den Einstandskurs je Stück eingeben, z. B. 80,50.';
     if (threshold.trim() && (th === null || th > 0 || th < -50)) next.threshold = 'Eine Zahl zwischen −50 und 0, z. B. −5.';
@@ -85,6 +89,8 @@ function PositionForm({
       lossThresholdPct: th,
       topics: cleanTopics(topics),
       manualPrice: existing?.manualPrice ?? null,
+      // a changed ISIN with an untouched symbol means the old symbol no longer fits: it is found again automatically
+      providerSymbol: sym && !(existing && normalizeIsin(isin) !== existing.isin && sym === existing.providerSymbol) ? sym : null,
       archived,
     });
     setBusy(false);
@@ -117,6 +123,17 @@ function PositionForm({
             onInput={(e) => setIsin(e.currentTarget.value.toUpperCase())}
             onBlur={() => isin && !isValidIsin(isin) && setErrors({ ...errors, isin: 'Diese ISIN ist ungültig.' })}
             placeholder="IE00B4L5Y983"
+          />
+        </Field>
+        <Field label="Kurssymbol (leer = automatisch per ISIN)" error={errors.symbol}>
+          <input
+            class="input mono"
+            value={symbol}
+            maxLength={40}
+            autocapitalize="characters"
+            spellcheck={false}
+            onInput={(e) => setSymbol(e.currentTarget.value.toUpperCase())}
+            placeholder="wird automatisch gefunden"
           />
         </Field>
         <div class="field-row">

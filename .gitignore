@@ -10,3 +10,6 @@ supabase/.temp/
 
 # Private, stays only on this Mac (the repository is public)
 DAILY_APP_BRIEF.md
+
+# Generated knowledge graph (local only)
+graphify-out/

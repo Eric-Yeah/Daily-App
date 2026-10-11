@@ -2,7 +2,7 @@ import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { CloseDayCard, NewsList } from '../../components/Content';
 import { Header, useGreeting } from '../../components/Header';
-import { Axis, DepotHeadline, EventList, ExternalLink, GroupBars, IntradayChart, KpiTiles, NumberedCard, UsMiniChart } from '../../components/Market';
+import { Axis, DepotHeadline, EventList, ExternalLink, GroupBars, IntradayChart, KpiTiles, MissingNote, NumberedCard, UsMiniChart } from '../../components/Market';
 import { empty, type DataSource } from '../../data/types';
 import { formatDateLong, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
@@ -34,6 +34,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
             <Axis labels={['09:00', '12:00', '15:00', tradingEnd]} />
             <div class="divider" />
             <GroupBars groups={d.groups} />
+            <MissingNote count={d.missing} />
           </section>
         )}
       </BlockView>

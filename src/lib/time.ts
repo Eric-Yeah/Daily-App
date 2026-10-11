@@ -64,13 +64,32 @@ export function isoDate(p: Pick<ZonedParts, 'year' | 'month' | 'day'>): string {
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 }
 
+/**
+ * Days Xetra is closed on weekdays (official trading calendar). Add the next year around autumn.
+ * Easter dates: 2026-04-05 and 2027-03-28; 1 May 2027 and 25/26 Dec 2026 and 2027 fall on weekends.
+ */
+export const XETRA_HOLIDAYS: readonly string[] = [
+  '2026-01-01',
+  '2026-04-03',
+  '2026-04-06',
+  '2026-05-01',
+  '2026-12-24',
+  '2026-12-25',
+  '2026-12-31',
+  '2027-01-01',
+  '2027-03-26',
+  '2027-03-29',
+  '2027-12-24',
+  '2027-12-31',
+];
+
 export interface MarketOptions {
   timeZone: string;
   tradingEnd: string; // "17:30"
   holidays?: readonly string[]; // ISO dates in the market's zone
 }
 
-export function isTradingDay(p: ZonedParts, holidays: readonly string[] = []): boolean {
+export function isTradingDay(p: ZonedParts, holidays: readonly string[] = XETRA_HOLIDAYS): boolean {
   return p.weekday <= 5 && !holidays.includes(isoDate(p));
 }
 
