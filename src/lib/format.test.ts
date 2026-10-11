@@ -74,3 +74,16 @@ describe('dates and durations', () => {
     expect(formatPositions(5)).toBe('5 Positionen');
   });
 });
+
+describe('input numbers', () => {
+  it('round-trips form values', async () => {
+    const { formatInputNumber, parseInputNumber } = await import('./format');
+    expect(formatInputNumber(80.5)).toBe('80,5');
+    expect(formatInputNumber(1234.123456)).toBe('1234,123456');
+    expect(parseInputNumber('80,5')).toBe(80.5);
+    expect(parseInputNumber('80.5')).toBe(80.5);
+    expect(parseInputNumber('1.234,5')).toBe(1234.5);
+    expect(parseInputNumber('−3')).toBe(-3);
+    expect(parseInputNumber('abc')).toBeNull();
+  });
+});

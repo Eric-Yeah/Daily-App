@@ -11,6 +11,7 @@ const COLUMNS = {
   tradingEnd: 'trading_end',
   hideAmounts: 'hide_amounts',
   lockTimeoutMin: 'lock_timeout_min',
+  lossThresholdPct: 'loss_threshold_pct',
 } as const satisfies Partial<Record<keyof Settings, string>>;
 
 type Synced = keyof typeof COLUMNS;
@@ -24,7 +25,11 @@ function toRow(s: Partial<Settings>): Record<string, unknown> {
 
 function fromRow(row: Record<string, unknown>): Partial<Settings> {
   const out: Record<string, unknown> = {};
-  for (const k of SYNCED) if (row[COLUMNS[k]] !== undefined && row[COLUMNS[k]] !== null) out[k] = row[COLUMNS[k]];
+  for (const k of SYNCED) {
+    const v = row[COLUMNS[k]];
+    // numeric columns come back as numbers or strings depending on the column type
+    if (v !== undefined && v !== null) out[k] = k === 'lossThresholdPct' ? Number(v) : v;
+  }
   return out as Partial<Settings>;
 }
 

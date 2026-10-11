@@ -13,14 +13,14 @@ Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** un
 |---|---|---|
 | M1 | Oberfläche mit Beispieldaten, PWA, Deploy | **fertig** |
 | M2 | Supabase, Login, Face-ID-Sperre | **fertig** |
-| M3 | Depot: Positionen, Gruppen, CSV-Import | offen |
+| M3 | Depot: Positionen, Gruppen, CSV-Import | **fertig** |
 | M4 | Kurse (kostenlose Anbieter) | offen |
 | M5 | News und KI (Claude Haiku 5.5) | offen |
 | M6 | Briefings vorab + Push | offen |
 | M7 | Overload und Study App | offen |
 | M8 | Feinschliff, Passkey-Login | offen |
 
-Kurse, Meldungen, Termine, Training und „Dein Tag“ sind noch **Beispieldaten**. Das steht oben als „Beispieldaten · keine echten Kurse“ und lässt sich unter **Mehr → Beispieldaten anzeigen** ausschalten. Ohne Beispieldaten siehst du die ehrlichen Leerzustände („Noch keine Datenquelle verbunden“). **Echt** sind seit M2: Anmeldung, Einstellungen, „Heute erledigen“ und „Eine Zeile zum Tag“.
+Kurse, Meldungen, Termine, Training und „Dein Tag“ sind noch **Beispieldaten**. Das steht oben als „Beispieldaten · keine echten Kurse“ und lässt sich unter **Mehr → Beispieldaten anzeigen** ausschalten. Ohne Beispieldaten siehst du die ehrlichen Leerzustände („Noch keine Datenquelle verbunden“). **Echt** sind: Anmeldung, Einstellungen, „Heute erledigen“, „Eine Zeile zum Tag“ (seit M2) und das **Depot** mit Positionen, Gruppen und CSV-Import (seit M3). Die Kurse dazu kommen mit M4.
 
 ## Lokal starten
 
@@ -34,7 +34,7 @@ npm install
 npm run dev
 ```
 
-Dann im Browser `http://localhost:5173/Daily-App/` öffnen. Im Browser-Entwicklermodus die Breite auf 390 px stellen, so wie im Design.
+Dann im Browser `http://localhost:5173/Daily-App/` öffnen. Mit `?demo` (`http://localhost:5173/Daily-App/?demo`) läuft die App lokal ohne Anmeldung mit einem leeren Speicher im Browser, praktisch zum Ausprobieren. Den Demo-Modus gibt es nur lokal, nicht in der veröffentlichten App. Im Browser-Entwicklermodus die Breite auf 390 px stellen, so wie im Design.
 
 ### Testmodus für die Uhrzeit
 
@@ -49,7 +49,7 @@ Welche Ansicht vorgewählt ist und was die Countdowns anzeigen, hängt von der U
 
 | Befehl | Was er macht |
 |---|---|
-| `npm test` | Tests (Zahlenformat, Zeitlogik, Sperre, Aufgaben) |
+| `npm test` | Tests (Zahlenformat, Zeitlogik, Sperre, Aufgaben, ISIN, CSV, Depot-Berechnung) |
 | `npm run test:db` | Datenbank-Tests: Migrationen und Row Level Security in einer Test-Datenbank (nie die echte) |
 | `npm run check:public` | Prüft, dass nichts Privates im Code steht |
 | `npm run build` | Typprüfung + fertige App in `dist/` |
@@ -95,6 +95,18 @@ Neue Migrationen kommen später genauso als nummerierte Dateien in `supabase/mig
 3. Ab jetzt fragt Daily beim Öffnen und nach einer Pause (einstellbar, Standard 5 Minuten) nach Face ID. Ohne Face ID geht es mit „Stattdessen mit Passwort“.
 
 **Ehrlicher Hinweis:** Die Face-ID-Sperre ist eine Schutzschicht gegen fremde Hände am entsperrten Handy. Sie läuft auf dem Gerät. Der eigentliche Schutz deiner Daten sind die Anmeldung und die Row Level Security in der Datenbank. Später (M8) prüfe ich Passkeys als echte Anmeldung; Supabase bietet sie seit 2026 als Beta.
+
+## Depot (ab M3)
+
+Im Tab **Depot** legst du Positionen an (Name, ISIN, Stückzahl, Einstandskurs je Stück), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
+
+**CSV-Import:** Depot bei deinem Broker als CSV exportieren → *Depot* → *CSV-Import* → Datei wählen. Die App erkennt Trennzeichen, Zeichensatz (auch ältere Windows-Exporte), die Kopfzeile und die Spalten. Prüfe die Zuordnung und die Vorschau:
+- Mehrere Zeilen mit derselben ISIN (mehrere Käufe) werden zusammengefasst, der Einstandskurs wird gewichtet gemittelt.
+- Schon vorhandene ISINs werden aktualisiert (Gruppe und Themen bleiben) oder übersprungen.
+- Zeilen mit ungültiger ISIN (Prüfziffer) erscheinen als Fehler und werden nicht übernommen.
+- Die Datei selbst wird nur auf dem Gerät gelesen und nicht hochgeladen.
+
+**Themen** schlägt die App vorerst nach festen Regeln aus dem Namen vor (z. B. „MSCI World“ → Welt, USA). Ein KI-Vorschlag kommt mit M5.
 
 ## Sicherheit und Datenschutz
 

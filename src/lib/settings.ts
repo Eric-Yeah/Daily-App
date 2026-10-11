@@ -10,6 +10,7 @@ export interface Settings {
   tradingEnd: string;
   hideAmounts: boolean;
   lockTimeoutMin: number;
+  lossThresholdPct: number;
   showMockData: boolean;
 }
 
@@ -19,6 +20,7 @@ const DEFAULTS: Settings = {
   tradingEnd: DEFAULT_TRADING_END,
   hideAmounts: false,
   lockTimeoutMin: 5,
+  lossThresholdPct: -3,
   showMockData: true,
 };
 

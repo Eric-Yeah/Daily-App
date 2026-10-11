@@ -139,6 +139,78 @@ await test('Server (service_role) sieht alles', () =>
   }),
 );
 
+// --- Depot (0002) ---
+const ISIN = 'IE00B4L5Y983';
+const ownGroup = await asCommit('authenticated', OWNER, async () =>
+  (await db.query("insert into daily.groups (name) values ('Welt breit') returning id")).rows[0].id,
+);
+await asCommit('authenticated', OWNER, () =>
+  db.query(
+    "insert into daily.positions (name, isin, quantity, cost_per_unit, group_id, topics) values ('Beispiel-ETF', $1, 10, 80.5, $2, '{Welt,USA}')",
+    [ISIN, ownGroup],
+  ),
+);
+
+await test('Depot: Besitzer sieht Gruppen und Positionen', () =>
+  as('authenticated', OWNER, async () => {
+    assert.equal((await db.query('select * from daily.groups')).rowCount, 1);
+    const r = await db.query('select quantity, cost_per_unit, topics from daily.positions');
+    assert.equal(r.rowCount, 1);
+  }),
+);
+
+await test('Depot: fremdes Konto sieht und ändert nichts', () =>
+  as('authenticated', OTHER, async () => {
+    assert.equal((await db.query('select * from daily.positions')).rowCount, 0);
+    assert.equal((await db.query('select * from daily.groups')).rowCount, 0);
+    assert.equal((await db.query('update daily.positions set quantity = 0')).rowCount, 0);
+    assert.equal((await db.query('delete from daily.groups')).rowCount, 0);
+  }),
+);
+
+await test('Depot: keine Position mit der Gruppe eines anderen Kontos', async () => {
+  // A second owner-like user with own data, pointing at the first owner's group, must fail.
+  await db.query('insert into daily.owner (user_id) values ($1) on conflict do nothing', [OTHER]);
+  try {
+    await as('authenticated', OTHER, () =>
+      rejects(
+        db.query("insert into daily.positions (name, isin, quantity, cost_per_unit, group_id) values ('x', 'DE0005140008', 1, 1, $1)", [ownGroup]),
+        /foreign key/,
+      ),
+    );
+  } finally {
+    await db.query('delete from daily.owner where user_id = $1', [OTHER]);
+  }
+});
+
+await test('Depot: ISIN und Mengen werden geprüft', () =>
+  as('authenticated', OWNER, async () => {
+    await rejects(db.query("insert into daily.positions (name, isin, quantity, cost_per_unit) values ('x', 'kein-isin', 1, 1)"), /check constraint/);
+  }).then(() =>
+    as('authenticated', OWNER, () =>
+      rejects(db.query("insert into daily.positions (name, isin, quantity, cost_per_unit) values ('x', 'DE0005140008', -1, 1)"), /check constraint/),
+    ),
+  ),
+);
+
+await test('Depot: gleiche ISIN nur einmal je Konto', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.positions (name, isin, quantity, cost_per_unit) values ('x', $1, 1, 1)", [ISIN]), /duplicate key/),
+  ),
+);
+
+await test('Depot: Gruppe löschen lässt die Position ohne Gruppe stehen', () =>
+  as('authenticated', OWNER, async () => {
+    await db.query('delete from daily.groups');
+    const r = await db.query('select group_id from daily.positions');
+    assert.equal(r.rows[0].group_id, null);
+  }),
+);
+
+await test('Depot: ohne Anmeldung kein Zugriff', () =>
+  as('anon', null, () => rejects(db.query('select * from daily.positions'), /permission denied/)),
+);
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

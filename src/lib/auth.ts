@@ -13,7 +13,12 @@ export type AuthState =
 // Last successful owner check per user, so the app also opens offline.
 const OWNER_CACHE = 'owner-ok';
 
-let state: AuthState = supabaseConfigured ? { status: 'loading' } : { status: 'disabled' };
+// Local development only: "?demo" runs without login and without Supabase (in-memory data).
+// The production build never contains this switch.
+const demo = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('demo');
+const enabled = supabaseConfigured && !demo;
+
+let state: AuthState = enabled ? { status: 'loading' } : { status: 'disabled' };
 const listeners = new Set<(s: AuthState) => void>();
 
 function set(next: AuthState) {
@@ -57,7 +62,7 @@ async function apply(session: Session | null) {
 
 let started = false;
 function start() {
-  if (started || !supabaseConfigured) return;
+  if (started || !enabled) return;
   started = true;
   const auth = supabase().auth;
   auth.getSession().then(({ data }) => apply(data.session));

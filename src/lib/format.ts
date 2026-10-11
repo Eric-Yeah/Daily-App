@@ -141,3 +141,23 @@ export function formatAge(minutes: number): string {
 export function formatPositions(n: number): string {
   return n === 1 ? '1 Position' : `${n} Positionen`;
 }
+
+/** Number for an input field: German comma, no thousands separator, up to 6 decimals. */
+export function formatInputNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '';
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 6, useGrouping: false }).format(value);
+}
+
+/** Parses what someone types: "80,5", "80.5", "1.234,5" and "−3" all work. */
+export function parseInputNumber(raw: string): number | null {
+  let s = raw.trim().replace(/\s|€|%/g, '').replace(/−/g, '-');
+  if (!s) return null;
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  return Number(s);
+}
+
+/** Share count: "12,5", "3", "0,123456" (German, grouped, no trailing zeros). */
+export function formatQuantity(value: number): string {
+  return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 6 }).format(value);
+}

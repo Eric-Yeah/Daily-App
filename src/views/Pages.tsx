@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Header } from '../components/Header';
+import { formatPct } from '../lib/format';
 import { currentSession, signOut, useAuth } from '../lib/auth';
 import { disableLock, lockEnabled, lockErrorText, webAuthnLock } from '../lib/lock';
 import { isClockPinned } from '../lib/clock';
@@ -8,18 +9,6 @@ import { parseHHMM } from '../lib/time';
 
 export const DISCLAIMER =
   'Informationen, keine Anlageberatung. KI-Zusammenfassungen können Fehler enthalten, bitte das Original prüfen.';
-
-export function DepotPage() {
-  return (
-    <main class="page">
-      <Header dateLine="Positionen und Gruppen" title="Depot" />
-      <section class="card gap-8 block-state">
-        <h2 class="block-state__title">Kommt in Meilenstein M3</h2>
-        <p>Hier legst du deine Positionen an, ordnest sie Gruppen zu und importierst die CSV deines Brokers.</p>
-      </section>
-    </main>
-  );
-}
 
 export function NewsPage() {
   return (
@@ -89,6 +78,23 @@ export function MorePage() {
               if (/^\d{2}:\d{2}$/.test(v) && parseHHMM(v) > 12 * 60) updateSettings({ tradingEnd: v });
             }}
           />
+        </label>
+        <label class="setting">
+          <span>
+            Verlustschwelle
+            <span class="setting__hint">Ab diesem Tagesverlust erscheint eine Position unter „Auffällig“. Pro Position änderbar.</span>
+          </span>
+          <select
+            class="input"
+            value={String(s.lossThresholdPct)}
+            onChange={(e) => updateSettings({ lossThresholdPct: Number(e.currentTarget.value) })}
+          >
+            {[-1, -2, -3, -4, -5, -7, -10].map((v) => (
+              <option key={v} value={String(v)}>
+                {formatPct(v, 0)}
+              </option>
+            ))}
+          </select>
         </label>
         <div class="setting">
           <span>
