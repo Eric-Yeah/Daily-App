@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.6.0',
+    date: '2026-10-11',
+    title: 'Sparpläne im Depot',
+    notes: [
+      'Neu: Sparplan je Position. Im Positionsformular trägst du ein, wie viel du jeden Monat investierst, und optional an welchem Tag (1 bis 28).',
+      'In der Depot-Liste steht der Sparplan bei der Position, und oben siehst du die Summe aller Sparpläne pro Monat. Mit „Beträge verbergen“ werden auch diese Beträge ausgeblendet.',
+      'Der Sparplan ist eine Notiz für deine Übersicht: Stückzahl und Einstand ändern sich nicht automatisch. Nach einer Ausführung beim Broker passt du die Position an oder importierst die CSV neu.',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-10-11',
     title: 'WKN im Depot',

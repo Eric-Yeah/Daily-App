@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildImport, decodeBytes, detectDelimiter, findHeaderRow, guessMapping, parseCsv, parseNumber } from './csv';
 import { isValidIsin, isValidWkn, normalizeWkn, securityId } from './isin';
-import { computeDepot, costBasisOf, type PositionInput } from './portfolio';
+import { computeDepot, costBasisOf, monthlySavingsOf, type PositionInput } from './portfolio';
 import { cleanTopics, suggestGroupName, suggestTopics } from './topics';
 
 describe('ISIN', () => {
@@ -190,5 +190,7 @@ describe('computeDepot', () => {
 
   it('cost basis works without prices', () => {
     expect(costBasisOf([{ quantity: 10, costPerUnit: 80.5 }, { quantity: 2, costPerUnit: 500 }])).toBe(1805);
+    expect(monthlySavingsOf([{ savingsAmount: 50 }, { savingsAmount: null }, { savingsAmount: 25.5 }])).toBe(75.5);
+    expect(monthlySavingsOf([])).toBe(0);
   });
 });

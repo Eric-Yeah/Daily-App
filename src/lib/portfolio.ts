@@ -138,6 +138,11 @@ export function costBasisOf(positions: Pick<PositionInput, 'quantity' | 'costPer
   return positions.reduce((s, p) => s + p.quantity * p.costPerUnit, 0);
 }
 
+/** Sum of all monthly savings plans (positions without a plan count as 0). */
+export function monthlySavingsOf(positions: { savingsAmount: number | null }[]): number {
+  return positions.reduce((s, p) => s + (p.savingsAmount ?? 0), 0);
+}
+
 export interface PeriodChange {
   pct: number;
   abs: number;

@@ -25,6 +25,8 @@ interface Errors {
   quantity?: string;
   cost?: string;
   threshold?: string;
+  savings?: string;
+  savingsDay?: string;
   form?: string;
 }
 
@@ -46,6 +48,8 @@ function PositionForm({
   const [symbol, setSymbol] = useState(existing?.providerSymbol ?? '');
   const [quantity, setQuantity] = useState(formatInputNumber(existing?.quantity));
   const [cost, setCost] = useState(formatInputNumber(existing?.costPerUnit));
+  const [savings, setSavings] = useState(formatInputNumber(existing?.savingsAmount));
+  const [savingsDay, setSavingsDay] = useState(existing?.savingsDay ? String(existing.savingsDay) : '');
   const [groupId, setGroupId] = useState<string>(existing?.groupId ?? '');
   const [threshold, setThreshold] = useState(formatInputNumber(existing?.lossThresholdPct));
   const [topics, setTopics] = useState<string[]>(existing?.topics ?? []);
@@ -67,6 +71,8 @@ function PositionForm({
     e.preventDefault();
     const q = parseInputNumber(quantity);
     const c = parseInputNumber(cost);
+    const sp = savings.trim() ? parseInputNumber(savings) : null;
+    const spDay = savingsDay.trim() ? Number(savingsDay.trim()) : null;
     const th = threshold.trim() ? parseInputNumber(threshold) : null;
     const next: Errors = {};
     if (!name.trim()) next.name = 'Bitte einen Namen eingeben.';
@@ -81,6 +87,9 @@ function PositionForm({
     if (sym && !/^[A-Za-z0-9.^=-]{1,40}$/.test(sym)) next.symbol = 'Nur Buchstaben, Ziffern und . ^ = - erlaubt.';
     if (q === null || q < 0) next.quantity = 'Bitte eine Stückzahl eingeben, z. B. 12,5.';
     if (c === null || c < 0) next.cost = 'Bitte den Einstandskurs je Stück eingeben, z. B. 80,50.';
+    if (savings.trim() && (sp === null || sp <= 0 || sp > 1_000_000)) next.savings = 'Bitte einen Betrag pro Monat eingeben, z. B. 50.';
+    else if (savingsDay.trim() && !savings.trim()) next.savingsDay = 'Der Tag gehört zu einem Sparplan: trag oben den Betrag ein.';
+    else if (spDay !== null && (!Number.isInteger(spDay) || spDay < 1 || spDay > 28)) next.savingsDay = 'Ein Tag zwischen 1 und 28.';
     if (threshold.trim() && (th === null || th > 0 || th < -50)) next.threshold = 'Eine Zahl zwischen −50 und 0, z. B. −5.';
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -98,6 +107,8 @@ function PositionForm({
       lossThresholdPct: th,
       topics: cleanTopics(topics),
       manualPrice: existing?.manualPrice ?? null,
+      savingsAmount: sp,
+      savingsDay: sp === null ? null : spDay,
       // a changed ISIN with an untouched symbol means the old symbol no longer fits: it is found again automatically
       providerSymbol: sym && !(existing && isinValue !== existing.isin && sym === existing.providerSymbol) ? sym : null,
       archived,
@@ -166,6 +177,19 @@ function PositionForm({
           </Field>
           <Field label="Einstand je Stück (€)" error={errors.cost}>
             <input class="input mono" inputMode="decimal" value={cost} onInput={(e) => setCost(e.currentTarget.value)} placeholder="80,50" />
+          </Field>
+        </div>
+      </section>
+
+      <section class="card gap-12">
+        <h2>Sparplan</h2>
+        <p class="card-sub">Investierst du jeden Monat einen festen Betrag? Das ist nur eine Notiz für deine Übersicht, gebucht wird nichts automatisch.</p>
+        <div class="field-row">
+          <Field label="Betrag pro Monat (€)" error={errors.savings}>
+            <input class="input mono" inputMode="decimal" value={savings} onInput={(e) => setSavings(e.currentTarget.value)} placeholder="leer = kein Sparplan" />
+          </Field>
+          <Field label="Ausführung am (optional)" error={errors.savingsDay}>
+            <input class="input mono" inputMode="numeric" value={savingsDay} maxLength={2} onInput={(e) => setSavingsDay(e.currentTarget.value)} placeholder="1–28" />
           </Field>
         </div>
       </section>

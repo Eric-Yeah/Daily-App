@@ -79,6 +79,8 @@ const toPos = (r: Row): Position => ({
   lossThresholdPct: r.loss_threshold_pct == null ? null : Number(r.loss_threshold_pct),
   topics: (r.topics as string[]) ?? [],
   manualPrice: r.manual_price == null ? null : Number(r.manual_price),
+  savingsAmount: r.savings_amount == null ? null : Number(r.savings_amount),
+  savingsDay: r.savings_day == null ? null : Number(r.savings_day),
   providerSymbol: (r.provider_symbol as string | null) ?? null,
   archived: Boolean(r.archived),
 });

@@ -26,6 +26,8 @@ export interface Position {
   lossThresholdPct: number | null;
   topics: string[];
   manualPrice: number | null;
+  savingsAmount: number | null; // savings plan: € per month (a note, nothing is booked automatically)
+  savingsDay: number | null; // day of month 1–28, optional
   providerSymbol: string | null; // price provider symbol; found automatically per ISIN (not per WKN), editable
   archived: boolean;
 }
@@ -74,6 +76,8 @@ const toPosition = (r: Row): Position => ({
   lossThresholdPct: r.loss_threshold_pct === null || r.loss_threshold_pct === undefined ? null : Number(r.loss_threshold_pct),
   topics: (r.topics as string[]) ?? [],
   manualPrice: r.manual_price === null || r.manual_price === undefined ? null : Number(r.manual_price),
+  savingsAmount: r.savings_amount === null || r.savings_amount === undefined ? null : Number(r.savings_amount),
+  savingsDay: r.savings_day === null || r.savings_day === undefined ? null : Number(r.savings_day),
   providerSymbol: (r.provider_symbol as string | null) ?? null,
   archived: Boolean(r.archived),
 });
@@ -92,6 +96,8 @@ const fromPosition = (p: PositionDraft): Row => ({
   manual_price: p.manualPrice,
   manual_price_at: p.manualPrice ? new Date().toISOString() : null,
   provider_symbol: p.providerSymbol,
+  savings_amount: p.savingsAmount,
+  savings_day: p.savingsDay,
   archived: p.archived,
   updated_at: new Date().toISOString(),
 });
@@ -258,6 +264,8 @@ function createMemoryDepot(): DepotStore {
             lossThresholdPct: null,
             topics,
             manualPrice: null,
+            savingsAmount: null,
+            savingsDay: null,
             providerSymbol: null,
             archived: false,
           });

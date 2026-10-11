@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { useDepot, type Group, type Position } from '../../data/depot';
 import { formatEuro, formatQuantity } from '../../lib/format';
 import { securityId } from '../../lib/isin';
-import { costBasisOf } from '../../lib/portfolio';
+import { costBasisOf, monthlySavingsOf } from '../../lib/portfolio';
 import { useSettings } from '../../lib/settings';
 import { DEFAULT_GROUPS } from '../../lib/topics';
 
@@ -34,6 +34,7 @@ export function DepotHome() {
   const active = positions.filter((p) => !p.archived);
   const archived = positions.filter((p) => p.archived);
   const total = costBasisOf(active);
+  const monthlySavings = monthlySavingsOf(active);
   const dateLine = active.length
     ? `${active.length} ${active.length === 1 ? 'Position' : 'Positionen'} · Einstand ${formatEuro(total, { hidden: hideAmounts })}`
     : 'Positionen und Gruppen';
@@ -86,6 +87,12 @@ export function DepotHome() {
         </section>
       ) : (
         <>
+          {monthlySavings > 0 && (
+            <p class="note">
+              Sparpläne: <span class="mono">{formatEuro(monthlySavings, { decimals: monthlySavings % 1 ? 2 : 0, hidden: hideAmounts })}</span> pro Monat
+              {' '}({active.filter((p) => p.savingsAmount).length} {active.filter((p) => p.savingsAmount).length === 1 ? 'Position' : 'Positionen'})
+            </p>
+          )}
           <p class="note">Kurse und Tagesänderungen siehst du im Tab „Heute“. Die Kursabfrage läuft zu Handelszeiten alle 30 Minuten.</p>
           {sections.map((s) => (
             <PositionSection key={s.group?.id ?? 'none'} group={s.group} items={s.items} hidden={hideAmounts} />
@@ -124,6 +131,12 @@ function PositionSection({ group, items, hidden }: { group: Group | null; items:
                 <span class="position-row__sub">
                   <span class="mono">{securityId(p)}</span> · <span class="nowrap">{formatQuantity(p.quantity)} Stk.</span> ·{' '}
                   <span class="nowrap">Ø {formatEuro(p.costPerUnit, { decimals: 2, hidden })}</span>
+                  {p.savingsAmount && (
+                    <>
+                      {' '}
+                      · <span class="nowrap">Sparplan {formatEuro(p.savingsAmount, { decimals: p.savingsAmount % 1 ? 2 : 0, hidden })}/Monat{p.savingsDay ? `, am ${p.savingsDay}.` : ''}</span>
+                    </>
+                  )}
                 </span>
               </span>
               <span class="position-row__value mono">{formatEuro(p.quantity * p.costPerUnit, { hidden })}</span>

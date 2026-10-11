@@ -124,7 +124,7 @@ Zugriff hat auch mit Passkey nur das Konto in `daily.owner`. Entfernen kannst du
 
 ## Depot (ab M3)
 
-Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einstandskurs je Stück), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
+Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einstandskurs je Stück), trägst optional einen **Sparplan** ein (Betrag pro Monat und Tag, nur eine Notiz, nichts wird automatisch gebucht), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
 
 **CSV-Import:** Depot bei deinem Broker als CSV exportieren → *Depot* → *CSV-Import* → Datei wählen. Die App erkennt Trennzeichen, Zeichensatz (auch ältere Windows-Exporte), die Kopfzeile und die Spalten. Prüfe die Zuordnung und die Vorschau:
 - Eine WKN-Spalte wird erkannt; eine Zeile braucht ISIN oder WKN. Mehrere Zeilen mit derselben ISIN/WKN (mehrere Käufe) werden zusammengefasst, der Einstandskurs wird gewichtet gemittelt.

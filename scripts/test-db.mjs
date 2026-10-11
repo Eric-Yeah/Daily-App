@@ -222,6 +222,31 @@ await test('Depot: WKN wird auf 6 Zeichen geprüft', () =>
   ),
 );
 
+await test('Depot: Sparplan mit Betrag und Tag', () =>
+  as('authenticated', OWNER, async () => {
+    await db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit, savings_amount, savings_day) values ('Sparplan', 'A0RPWH', 1, 1, 50, 15)");
+    const r = await db.query("select savings_amount, savings_day from daily.positions where wkn = 'A0RPWH'");
+    assert.equal(Number(r.rows[0].savings_amount), 50);
+    assert.equal(Number(r.rows[0].savings_day), 15);
+  }),
+);
+
+await test('Depot: Sparplan-Betrag muss positiv sein', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit, savings_amount) values ('x', 'A0RPWH', 1, 1, 0)"), /check constraint/),
+  ),
+);
+
+await test('Depot: Sparplan-Tag nur 1 bis 28 und nur mit Betrag', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit, savings_amount, savings_day) values ('x', 'A0RPWH', 1, 1, 10, 31)"), /check constraint/),
+  ).then(() =>
+    as('authenticated', OWNER, () =>
+      rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit, savings_day) values ('x', 'A0RPWH', 1, 1, 5)"), /check constraint/),
+    ),
+  ),
+);
+
 await test('Depot: Gruppe löschen lässt die Position ohne Gruppe stehen', () =>
   as('authenticated', OWNER, async () => {
     await db.query('delete from daily.groups');
