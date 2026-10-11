@@ -69,7 +69,7 @@ export function NoAccessPage({ email, reason }: { email: string; reason: 'not-ow
       <section class="card gap-12">
         {reason === 'schema' ? (
           <p class="card-sub">
-            Die Datenbank für Daily ist noch nicht freigegeben. In Supabase unter Project Settings → Data API → Exposed
+            Die Datenbank für Daily ist noch nicht freigegeben. In Supabase unter Integrations → Data API → Settings → Exposed
             schemas muss „daily“ eingetragen sein (siehe README).
           </p>
         ) : (

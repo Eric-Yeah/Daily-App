@@ -12,7 +12,7 @@ Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** un
 | Meilenstein | Inhalt | Status |
 |---|---|---|
 | M1 | Oberfläche mit Beispieldaten, PWA, Deploy | **fertig** |
-| M2 | Supabase, Login, Face-ID-Sperre | **fertig** (Einrichtung in Supabase siehe unten) |
+| M2 | Supabase, Login, Face-ID-Sperre | **fertig** |
 | M3 | Depot: Positionen, Gruppen, CSV-Import | offen |
 | M4 | Kurse (kostenlose Anbieter) | offen |
 | M5 | News und KI (Claude Haiku 5.5) | offen |
@@ -77,7 +77,8 @@ Weil die Study App Registrierungen für Freunde erlaubt, reicht „angemeldet“
 Alles im Supabase-Dashboard, im **Projekt der Study App**:
 
 1. **Tabellen anlegen:** links *SQL Editor* → *+ New query* → den kompletten Inhalt von [`supabase/migrations/0001_daily_core.sql`](supabase/migrations/0001_daily_core.sql) einfügen → *Run*. Unten muss „Success. No rows returned“ stehen.
-2. **Schema freigeben:** *Project Settings* → *Data API* → bei *Exposed schemas* `daily` hinzufügen → *Save*. (`public` und `graphql_public` bleiben drin.)
+2. **Schema freigeben:** *Integrations* → *Data API* → *Settings* → bei *Exposed schemas* `daily` anhaken → *Save*. (`public` und `graphql_public` bleiben drin.)
+   - **Wichtig:** Unter *Exposed tables* stehen die `daily.…`-Tabellen orange mit Warnsymbol („custom grants“). Dort **nichts anklicken**: Das würde die bewusst strengen Rechte (kein Zugriff ohne Anmeldung, `daily.owner` nicht beschreibbar) durch Standardrechte ersetzen.
 3. **Dich als Besitzer eintragen:** wieder *SQL Editor* → *+ New query* → folgende Zeile einfügen, **deine E-Mail-Adresse** statt `DEINE@EMAIL` eintragen → *Run*:
    ```sql
    insert into daily.owner (user_id) select id from auth.users where email = 'DEINE@EMAIL';
