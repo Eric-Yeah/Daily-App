@@ -34,12 +34,12 @@ export function NewsList({ title, items, now }: { title: string; items: NewsItem
       {items.length === 0 && <p class="block-state">Gerade keine neuen Meldungen zu deinen Themen.</p>}
       {items.map((n) => (
         <article key={n.id} class="news">
-          <div class="news__count" aria-label={`betrifft ${formatPositions(n.positions)}`}>
-            {n.positions}
+          <div class="news__count" aria-label={n.positions ? `betrifft ${formatPositions(n.positions)}` : 'allgemeine Marktmeldung'}>
+            {n.positions || '–'}
           </div>
           <div class="news__body">
             <span class="news__topic">
-              {n.topic} <span>· {formatPositions(n.positions)}</span>
+              {n.topic} <span>· {n.positions ? formatPositions(n.positions) : 'allgemein'}</span>
             </span>
             <h3 class="news__title">
               {n.title}

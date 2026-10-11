@@ -9,6 +9,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.2.1',
+    date: '2026-10-11',
+    title: 'Mehr Quellen und mehr Meldungen',
+    notes: [
+      'Viele neue Quellen: Handelsblatt, FAZ, DER SPIEGEL, ZEIT ONLINE, n-tv, MarketWatch, BBC News, The Guardian und die Bank of England kommen dazu.',
+      'Es erscheinen jetzt auch allgemeine Marktmeldungen, nicht nur Meldungen zu deinen Themen. Passende Meldungen sind weiter mit „betrifft N Positionen“ markiert.',
+      'Im Tab News ist „Nur mein Depot“ nicht mehr voreingestellt. Tippe es an, wenn du nur deine Themen sehen willst.',
+      'Behoben: Seit Tagen kamen kaum neue Meldungen, weil fast alles herausgefiltert wurde.',
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-10-11',
     title: 'Echte Kurse, Face-ID-Anmeldung und Hinweise zu neuen Versionen',

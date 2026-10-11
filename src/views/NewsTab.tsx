@@ -12,7 +12,7 @@ export function NewsTab() {
   const now = useNow(60_000);
   const [block, setBlock] = useState<Block<LiveNews[]>>();
   const [topic, setTopic] = useState<string | null>(null);
-  const [onlyDepot, setOnlyDepot] = useState(true);
+  const [onlyDepot, setOnlyDepot] = useState(false);
   const signedIn = !!currentSession();
 
   useEffect(() => {
@@ -60,13 +60,13 @@ export function NewsTab() {
           ) : (
             <StateCard
               title="Keine Meldungen"
-              message={all.length ? 'Zu diesem Filter gibt es gerade nichts.' : 'Die Meldungen werden alle 30 Minuten abgerufen (6 bis 23 Uhr). Lege im Depot Themen fest, damit passende Meldungen gefunden werden.'}
+              message={all.length ? 'Zu diesem Filter gibt es gerade nichts.' : 'Die Meldungen werden alle 30 Minuten abgerufen (6 bis 23 Uhr). Lege im Depot Themen fest, damit Meldungen deinen Positionen zugeordnet werden.'}
             />
           )}
         </>
       )}
       <p class="disclaimer">
-        {DISCLAIMER} Quellen: tagesschau.de, CNBC, EZB, Federal Reserve, Bundesbank und die GDELT-Nachrichtensuche. Gespeichert werden nur Titel, Anreißer und
+        {DISCLAIMER} Quellen: tagesschau.de, Handelsblatt, FAZ, DER SPIEGEL, ZEIT ONLINE, n-tv, CNBC, MarketWatch, BBC News, The Guardian, EZB, Federal Reserve, Bank of England, Bundesbank und die GDELT-Nachrichtensuche. Gespeichert werden nur Titel, Anreißer und
         Link; den ganzen Artikel liest du beim Original.
       </p>
     </main>
