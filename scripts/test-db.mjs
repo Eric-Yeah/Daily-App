@@ -408,6 +408,10 @@ await test('Ausführlich: Status und Text passen zusammen, Länge begrenzt', asy
   await bad("insert into daily.news_details (item_id, status, summary) values ($1, 'ok', $2)", [detailItem, 'x'.repeat(3001)]);
 });
 
+await test('Ausführlich: Fazit ist begrenzt', () =>
+  as('service_role', null, () => rejects(db.query('update daily.news_details set conclusion = $1', ['x'.repeat(601)]), /check constraint/)),
+);
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

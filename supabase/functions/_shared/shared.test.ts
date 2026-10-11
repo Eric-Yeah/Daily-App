@@ -4,7 +4,7 @@ import { headlineDrivers, importantItems, inDays, rankNews, type NewsInput } fro
 import { gdeltQuery, matchTopics, topicIndex, topTopics } from './newsTopics.ts';
 import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
 import { liveCandidates, parseLive } from './liveblog.ts';
-import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseDetail } from './article.ts';
+import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseConclusion, parseDetail } from './article.ts';
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 
 describe('RSS', () => {
@@ -316,5 +316,22 @@ describe('Artikel für die ausführliche Zusammenfassung', () => {
     const long = parseDetail({ summary: Array.from({ length: 400 }, (_, i) => `Das ist Satz Nummer ${i} mit etwas Text.`).join(' ') })!;
     expect(long.length).toBeLessThanOrEqual(2800);
     expect(long.endsWith('.')).toBe(true);
+  });
+  it('das Fazit hat höchstens 3 ganze Sätze', () => {
+    expect(parseConclusion({ conclusion: 'Eins ist klar. Zwei folgt daraus. Drei ist offen. Vier ist zu viel.' })).toBe('Eins ist klar. Zwei folgt daraus. Drei ist offen.');
+    expect(parseConclusion({ conclusion: '  Ein einzelner Satz über das Thema USA  ohne Punkt  ' })).toBe('Ein einzelner Satz über das Thema USA ohne Punkt');
+    expect(parseConclusion({ conclusion: 'Ja.' })).toBeNull();
+    expect(parseConclusion({ conclusion: 5 })).toBeNull();
+    expect(parseConclusion({})).toBeNull();
+    expect(parseConclusion({ conclusion: `${'Sehr lang '.repeat(80)}.` })).toBeNull();
+  });
+  it('der Prompt verlangt ein kurzes Fazit ohne Prognose und gibt nur Themen, nie Positionen weiter', () => {
+    const sys = detailSystem('Regeln');
+    expect(sys).toMatch(/höchstens 3 Sätze/);
+    expect(sys).toMatch(/keine Kursrichtung/);
+    expect(sys).toMatch(/nur die Themen/);
+    const user = detailUser({ title: 'T', source: 'S', lang: 'de' }, 'Text', { topics: ['USA', 'Technologie'], positions: 3 });
+    expect(user).toContain('Themen deines Depots, die im Artikel vorkommen: USA, Technologie (betrifft 3 Positionen)');
+    expect(detailUser({ title: 'T', source: 'S', lang: 'de' }, 'Text')).toContain('vorkommen: keine');
   });
 });

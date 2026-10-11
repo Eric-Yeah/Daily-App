@@ -104,19 +104,26 @@ export function classifyArticle(x: Extracted): DetailStatus {
 export const DETAIL_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['summary'],
-  properties: { summary: { type: 'string' } },
+  required: ['summary', 'conclusion'],
+  properties: { summary: { type: 'string' }, conclusion: { type: 'string' } },
 } as const;
+
+/** Longest conclusion we keep: 3 sentences. */
+export const MAX_CONCLUSION_SENTENCES = 3;
+export const MAX_CONCLUSION_CHARS = 500;
 
 export function detailSystem(rules: string): string {
   return `Du fasst einen Wirtschafts- oder Börsenartikel für einen privaten Tagesüberblick ausführlicher zusammen.
 Länge: etwa ein Drittel bis die Hälfte des Artikels, mindestens 100 und höchstens 300 Wörter (1 bis 2 Minuten Lesezeit). Ist der Artikel kürzer, fasse entsprechend kürzer.
 Aufbau: 2 bis 4 kurze Absätze, getrennt durch eine Leerzeile, das Wichtigste zuerst. Mit eigenen Worten, keine längeren wörtlichen Zitate. Namen, Zahlen und Daten nur so, wie sie im Artikel stehen.
+Zusätzlich conclusion = ein eigenes Fazit mit höchstens 3 Sätzen: Was ist die Kernaussage und wie ist sie einzuordnen? Nennt die Nachricht "Themen deines Depots", beschreibe vorsichtig ("könnte", "möglicherweise"), über welchen Zusammenhang die Meldung diese Themen berühren kann. Beschreibe nur mögliche Zusammenhänge, sage keine Kursrichtung, keinen Zeitpunkt und keine Handlung voraus und nenne keine Positionen, nur die Themen. Sind keine Themen genannt, schreibe kurz, dass kein direkter Bezug zum Depot erkennbar ist.
 ${rules}`;
 }
 
-export function detailUser(item: { title: string; source: string; lang: string | null }, text: string): string {
-  return `Titel: ${item.title}\nQuelle: ${item.source}\nSprache: ${item.lang ?? 'unbekannt'}\n\n<artikel>\n${text}\n</artikel>`;
+/** `depot`: the topics of the owner's positions that occur in the article (never names, amounts or ISINs). */
+export function detailUser(item: { title: string; source: string; lang: string | null }, text: string, depot: { topics: string[]; positions: number } = { topics: [], positions: 0 }): string {
+  const themes = depot.topics.length ? `${depot.topics.join(', ')} (betrifft ${depot.positions} ${depot.positions === 1 ? 'Position' : 'Positionen'})` : 'keine';
+  return `Titel: ${item.title}\nQuelle: ${item.source}\nSprache: ${item.lang ?? 'unbekannt'}\nThemen deines Depots, die im Artikel vorkommen: ${themes}\n\n<artikel>\n${text}\n</artikel>`;
 }
 
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
@@ -136,4 +143,15 @@ export function parseDetail(data: unknown): string | null {
   const head = text.slice(0, MAX_SUMMARY_CHARS);
   const end = Math.max(head.lastIndexOf('. '), head.lastIndexOf('.\n'));
   return end > MAX_SUMMARY_CHARS / 2 ? head.slice(0, end + 1) : head.trimEnd();
+}
+
+/** The conclusion: at most 3 whole sentences, or null if the AI gave nothing usable (the summary is still shown). */
+export function parseConclusion(data: unknown): string | null {
+  const raw = (data as { conclusion?: unknown } | null)?.conclusion;
+  if (typeof raw !== 'string') return null;
+  const flat = raw.replace(/\s+/g, ' ').trim();
+  const sentences = flat.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((x) => x.trim()) ?? [];
+  const kept = (sentences.length ? sentences : [flat]).slice(0, MAX_CONCLUSION_SENTENCES).join(' ');
+  if (kept.length < 20) return null;
+  return kept.length <= MAX_CONCLUSION_CHARS ? kept : null;
 }

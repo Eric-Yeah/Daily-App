@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.10.0',
+    date: '2026-10-11',
+    title: 'Fazit zu jeder ausführlichen News',
+    notes: [
+      'Unter der ausführlichen Zusammenfassung steht jetzt ein kurzes Fazit mit höchstens 3 Sätzen: Was ist die Kernaussage, und was könnte sie für die Themen deines Depots bedeuten?',
+      'Für den Bezug zum Depot sieht die KI nur die Themen deiner Positionen, die im Artikel vorkommen (zum Beispiel „USA“), nie Namen, ISINs oder Beträge. Das Fazit beschreibt mögliche Zusammenhänge, sagt aber keinen Kurs voraus und gibt keine Empfehlung.',
+      'Schon erstellte ausführliche Zusammenfassungen behalten ihren Stand und haben kein Fazit.',
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-10-11',
     title: 'Ausführliche News',

@@ -558,6 +558,20 @@
   color: var(--muted);
   cursor: default;
 }
+.news__conclusion {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--link);
+  background: var(--bg);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+}
+.news__conclusion-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--link);
+}
 .news__foot {
   display: flex;
   justify-content: space-between;

@@ -1,7 +1,8 @@
 // Daily App – Edge Function "daily-news-detail" (Deno).
 // The longer AI summary of one news item (1 to 2 minutes of reading), only when the owner taps "Ausführlich".
 // It reads the article page, and only if the article is freely readable and long enough, Claude Haiku 5.5 summarises it
-// in its own words. Only the summary is stored (table news_details), never the article. Behind a paywall there is
+// in its own words, plus a short conclusion (max. 3 sentences) with the possible link to the depot topics.
+// Only the summary and conclusion are stored (table news_details), never the article. Behind a paywall there is
 // no longer version: nothing is padded or guessed.
 //
 // Called by the app with the signed-in owner's session: { itemId: number }.
@@ -10,7 +11,8 @@
 // Deploy: npx supabase functions deploy daily-news-detail --no-verify-jwt --use-api --project-ref <ref>
 import { admin, CORS, json, ownerFromRequest, ownerSettings } from '../_shared/admin.ts';
 import { askJson, MODEL, RULES } from '../_shared/ai.ts';
-import { classifyArticle, DETAIL_SCHEMA, detailSystem, detailUser, extractArticle, isFetchableUrl, parseDetail } from '../_shared/article.ts';
+import { classifyArticle, DETAIL_SCHEMA, detailSystem, detailUser, extractArticle, isFetchableUrl, parseConclusion, parseDetail } from '../_shared/article.ts';
+import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 
 const UA = 'DailyApp/1.0 (+https://eric-yeah.github.io/Daily-App/)';
 
@@ -40,8 +42,8 @@ Deno.serve(async (req) => {
   const itemId = Number(body.itemId);
   if (!Number.isInteger(itemId) || itemId <= 0) return json(400, { error: 'itemId' });
 
-  const { data: cached } = await db.from('news_details').select('status, summary').eq('item_id', itemId).maybeSingle();
-  if (cached) return json(200, { status: cached.status, summary: cached.summary ?? undefined });
+  const { data: cached } = await db.from('news_details').select('status, summary, conclusion').eq('item_id', itemId).maybeSingle();
+  if (cached) return json(200, { status: cached.status, summary: cached.summary ?? undefined, conclusion: cached.conclusion ?? undefined });
 
   const { data: item } = await db.from('news_items').select('id, url, title, source, lang').eq('id', itemId).maybeSingle();
   if (!item) return json(404, { error: 'not found' });
@@ -57,17 +59,24 @@ Deno.serve(async (req) => {
     return json(200, { status });
   }
 
+  // Only the depot TOPICS that occur in the article go to the AI, never names, ISINs or amounts.
+  const { data: positions } = await db.from('positions').select('id, topics').eq('user_id', owner).eq('archived', false);
+  const idx = topicIndex((positions ?? []) as { id: string; topics: string[] }[]);
+  const found = matchTopics(`${item.title} ${article.text}`, [...idx.keys()]);
+  const depot = { topics: found, positions: new Set(found.flatMap((t) => idx.get(t) ?? [])).size };
+
   const settings = await ownerSettings(db, owner);
   const res = await askJson<unknown>(db, settings.aiBudgetUsdMonth, {
     system: detailSystem(RULES),
-    user: detailUser(item, article.text),
-    maxTokens: 1100,
+    user: detailUser(item, article.text, depot),
+    maxTokens: 1500,
     schema: DETAIL_SCHEMA as unknown as Record<string, unknown>,
   });
   if (!res.ok) return json(200, { status: res.reason === 'budget' || res.reason === 'no_key' ? res.reason : 'error' });
 
   const summary = parseDetail(res.data);
   if (!summary) return json(200, { status: 'error' });
-  await db.from('news_details').upsert({ item_id: itemId, status: 'ok', summary, model: MODEL }, { onConflict: 'item_id', ignoreDuplicates: true });
-  return json(200, { status: 'ok', summary });
+  const conclusion = parseConclusion(res.data);
+  await db.from('news_details').upsert({ item_id: itemId, status: 'ok', summary, conclusion, model: MODEL }, { onConflict: 'item_id', ignoreDuplicates: true });
+  return json(200, { status: 'ok', summary, conclusion: conclusion ?? undefined });
 });

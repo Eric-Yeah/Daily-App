@@ -28,7 +28,13 @@ export function NewsDetailBox({ id }: { id: string }) {
                 {p}
               </p>
             ))}
-            <span class="note">KI-Zusammenfassung, ca. {detail.minutes} Min. Lesezeit. Bitte das Original prüfen.</span>
+            {detail.conclusion && (
+              <div class="news__conclusion">
+                <span class="news__conclusion-label">Fazit</span>
+                <p class="news__summary">{detail.conclusion}</p>
+              </div>
+            )}
+            <span class="note">KI-Zusammenfassung, ca. {detail.minutes} Min. Lesezeit. Das Fazit ist keine Anlageberatung. Bitte das Original prüfen.</span>
           </>
         )}
       </div>

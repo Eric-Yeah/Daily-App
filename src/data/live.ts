@@ -70,7 +70,7 @@ export async function loadNews(sinceIso: string, limit = 200): Promise<Block<Liv
 }
 
 export type NewsDetail =
-  | { status: 'ok'; paragraphs: string[]; minutes: number }
+  | { status: 'ok'; paragraphs: string[]; minutes: number; conclusion: string | null }
   | { status: 'no_text' | 'short' | 'unreachable' | 'budget' | 'no_key' | 'error' };
 
 /** The longer AI summary (1 to 2 minutes) of one news item; the Edge Function reads the article and caches the result. */
@@ -80,7 +80,12 @@ export async function loadNewsDetail(itemId: string): Promise<NewsDetail> {
   const status = (data as { status?: string }).status;
   if (status === 'ok' && typeof data.summary === 'string') {
     const paragraphs = data.summary.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
-    return { status: 'ok', paragraphs, minutes: readingMinutes('', [{ title: '', text: paragraphs.join(' ') }]) };
+    return {
+      status: 'ok',
+      paragraphs,
+      minutes: readingMinutes('', [{ title: '', text: paragraphs.join(' ') }]),
+      conclusion: typeof data.conclusion === 'string' && data.conclusion.trim() ? data.conclusion.trim() : null,
+    };
   }
   return status === 'no_text' || status === 'short' || status === 'unreachable' || status === 'budget' || status === 'no_key' ? { status } : { status: 'error' };
 }
