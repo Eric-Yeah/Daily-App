@@ -111,6 +111,10 @@ export interface PasskeyInfo {
   createdAt: Date;
 }
 
+// Remembered per device once a passkey worked here, so the login page can ask for Face ID right away.
+const PASSKEY_HINT = 'passkey-hint';
+export const passkeyKnown = (): boolean => storage.get(PASSKEY_HINT) === '1';
+
 export function passkeysSupported(): boolean {
   return typeof window !== 'undefined' && 'PublicKeyCredential' in window;
 }
@@ -130,6 +134,7 @@ export function passkeyErrorText(error: { name?: string; message?: string; statu
 export async function signInWithPasskey(): Promise<string | null> {
   try {
     const { error } = await supabase().auth.signInWithPasskey();
+    if (!error) storage.set(PASSKEY_HINT, '1');
     return error ? passkeyErrorText(error) : null;
   } catch (e) {
     return passkeyErrorText(e as Error);
@@ -140,6 +145,7 @@ export async function signInWithPasskey(): Promise<string | null> {
 export async function registerPasskey(): Promise<string | null> {
   try {
     const { error } = await supabase().auth.registerPasskey();
+    if (!error) storage.set(PASSKEY_HINT, '1');
     return error ? passkeyErrorText(error) : null;
   } catch (e) {
     return passkeyErrorText(e as Error);

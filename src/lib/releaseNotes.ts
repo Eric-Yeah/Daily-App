@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.11.0',
+    date: '2026-10-11',
+    title: 'Direkt zu Face ID, mit Entsperr-Animation',
+    notes: [
+      'Beim Öffnen fragt Daily jetzt sofort nach Face ID (am Mac Touch ID), du musst nicht mehr zuerst auf „Entsperren“ tippen. Klappt das beim Öffnen nicht von allein, steht der Knopf wie bisher da.',
+      'Wenn du schon einen Passkey eingerichtet hast, startet auch die Anmeldung von selbst mit Face ID. Dann reicht ein Blick, ohne zusätzlichen Tipp auf „Mit Face ID anmelden“.',
+      'Neu: Beim Entsperren geht das Schloss auf, wird grün, und die App blendet sanft ein. Bei eingeschalteter Einstellung „Bewegung reduzieren“ entfällt die Animation.',
+    ],
+  },
+  {
     version: '0.10.1',
     date: '2026-10-11',
     title: 'Ausführliche News bleiben stehen',

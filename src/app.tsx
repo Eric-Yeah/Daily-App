@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TabBar } from './components/TabBar';
 import { UpdateBanner, WhatsNew } from './components/Updates';
@@ -26,6 +26,19 @@ export function App() {
     if (auth.status === 'ready') void pullSettings();
   });
 
+  // Play the reveal animation when the lock (not just the privacy cover) has been lifted.
+  const [reveal, setReveal] = useState(false);
+  const wasLocked = useRef(lock.locked);
+  useEffect(() => {
+    if (wasLocked.current && !lock.locked) {
+      setReveal(true);
+      const t = setTimeout(() => setReveal(false), 900);
+      wasLocked.current = lock.locked;
+      return () => clearTimeout(t);
+    }
+    wasLocked.current = lock.locked;
+  }, [lock.locked]);
+
   if (auth.status === 'loading') return <div class="app" aria-busy="true" />;
   if (auth.status === 'signed-out') return <div class="app"><LoginPage /></div>;
   if (auth.status === 'no-access') return <div class="app"><NoAccessPage email={auth.email} reason={auth.reason} /></div>;
@@ -34,7 +47,7 @@ export function App() {
   }
 
   return (
-    <div class="app">
+    <div class={reveal ? 'app app--reveal' : 'app'}>
       <ErrorBoundary resetKey={route}>
         {route === 'heute' && <Today />}
         {route === 'depot' && <DepotTab />}

@@ -1,6 +1,6 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { Header } from '../components/Header';
-import { passkeysSupported, signIn, signInWithPasskey, signOut, verifyPassword } from '../lib/auth';
+import { passkeyKnown, passkeysSupported, signIn, signInWithPasskey, signOut, verifyPassword } from '../lib/auth';
 import { biometricName } from '../lib/device';
 import { lockErrorText, unlock, webAuthnLock } from '../lib/lock';
 
@@ -20,14 +20,22 @@ export function LoginPage() {
     else unlock(); // the password was just entered, no need to ask for the biometric check right after
   };
 
-  const withPasskey = async () => {
+  // `auto`: started by the page itself, not by a tap. Some browsers refuse that without a gesture,
+  // so a failure stays silent and the button is still there.
+  const withPasskey = async (auto = false) => {
     setBusy(true);
     setError('');
     const err = await signInWithPasskey();
     setBusy(false);
-    if (err) setError(err);
-    else unlock(); // the biometric check was just done by the passkey itself
+    if (err) {
+      if (!auto) setError(err);
+    } else unlock(); // the biometric check was just done by the passkey itself
   };
+
+  // Once a passkey worked on this device, ask for Face ID right away: open the app, confirm, done.
+  useEffect(() => {
+    if (passkeysSupported() && passkeyKnown() && document.visibilityState === 'visible') void withPasskey(true);
+  }, []);
 
   return (
     <main class="page page--plain">
@@ -36,7 +44,7 @@ export function LoginPage() {
         <h2>Anmelden</h2>
         {passkeysSupported() && (
           <>
-            <button class="button button--wide" type="button" onClick={withPasskey} disabled={busy}>
+            <button class="button button--wide" type="button" onClick={() => void withPasskey()} disabled={busy}>
               Mit {biometricName()} anmelden
             </button>
             <p class="note">Geht, sobald du unter „Mehr → Sicherheit“ einen Passkey eingerichtet hast. Sonst melde dich mit dem Passwort an.</p>
@@ -104,21 +112,47 @@ export function NoAccessPage({ email, reason }: { email: string; reason: 'not-ow
   );
 }
 
+/** Time the unlock animation takes before the app shows (keep in sync with `.lock--opening` in components.css). */
+const OPEN_MS = 760;
+
+const reducedMotion = (): boolean =>
+  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** Shown when the app is locked, and as a privacy cover while it is in the background. */
 export function LockScreen({ coverOnly = false }: { coverOnly?: boolean }) {
   const [message, setMessage] = useState('');
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const checking = useRef(false);
 
-  const faceId = async () => {
+  // Plays the opening animation, then lets the app in.
+  const open = () => {
+    if (reducedMotion()) return unlock();
+    setOpening(true);
+    setTimeout(unlock, OPEN_MS);
+  };
+
+  // `auto`: started by the screen itself, not by a tap. Some browsers refuse that without a gesture,
+  // so a failure stays silent and the button is still there.
+  const faceId = async (auto = false) => {
+    if (checking.current || opening) return;
+    checking.current = true;
     setMessage('');
     try {
-      if (await webAuthnLock.verify()) unlock();
+      if (await webAuthnLock.verify()) open();
     } catch (e) {
-      setMessage(lockErrorText(e));
+      if (!auto) setMessage(lockErrorText(e));
+    } finally {
+      checking.current = false;
     }
   };
+
+  // Ask for Face ID as soon as the lock appears (app start, return after the pause).
+  useEffect(() => {
+    if (!coverOnly && document.visibilityState === 'visible') void faceId(true);
+  }, [coverOnly]);
 
   const withPassword = async (e: Event) => {
     e.preventDefault();
@@ -126,21 +160,22 @@ export function LockScreen({ coverOnly = false }: { coverOnly?: boolean }) {
     const err = await verifyPassword(password);
     setBusy(false);
     if (err) setMessage(err);
-    else unlock();
+    else open();
   };
 
   return (
-    <main class="page page--plain lock" aria-label="Daily ist gesperrt">
+    <main class={`page page--plain lock${opening ? ' lock--opening' : ''}`} aria-label={opening ? 'Daily ist entsperrt' : 'Daily ist gesperrt'}>
       <div class="lock__icon" aria-hidden="true">
+        <span class="lock__ring" />
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path class="lock__shackle" d="M8 11V8a4 4 0 0 1 8 0v3" />
           <rect x="5" y="11" width="14" height="10" rx="3" />
-          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
         </svg>
       </div>
-      <h1 class="lock__title">Daily ist gesperrt</h1>
+      <h1 class="lock__title">{opening ? 'Entsperrt' : 'Daily ist gesperrt'}</h1>
       {!coverOnly && (
-        <section class="card gap-12">
-          <button class="button button--wide" type="button" onClick={faceId}>
+        <section class="card gap-12 lock__panel">
+          <button class="button button--wide" type="button" onClick={() => void faceId()}>
             Mit {biometricName()} entsperren
           </button>
           {message && (
