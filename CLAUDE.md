@@ -18,3 +18,4 @@ Repository **und** Seite sind öffentlich. Deshalb gilt ohne Ausnahme:
 - Oberfläche und Texte auf Deutsch (du-Form), Code und Kommentare auf Englisch.
 - Design in `design/*.dc.html` ist verbindlich, Werte 1:1 übernehmen.
 - Nach Änderungen: `npm test`, `npm run build`, visuell auf 390 px prüfen (`?now=…` für die Uhrzeit, Berliner Zeit).
+- Jede Version, die Eric sieht, bekommt Release Notes: `version` in `package.json` erhöhen und oben in `src/lib/releaseNotes.ts` einen Eintrag auf Deutsch ergänzen (ein Test prüft das). Die App zeigt „Neue Version verfügbar“ und danach „Was ist neu“.

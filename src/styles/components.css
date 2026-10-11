@@ -1173,3 +1173,70 @@ a.button--secondary:hover {
 .view-body {
   display: contents;
 }
+
+/* ---------- New version and release notes ---------- */
+.sheet {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--tabbar-height) + 12px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card, 20px);
+  background: var(--card);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--divider);
+}
+.sheet__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.sheet__text strong {
+  font-size: 15px;
+  color: var(--text);
+}
+.sheet--notes {
+  flex-direction: column;
+  align-items: stretch;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.sheet__title {
+  font-size: 18px;
+}
+.release {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.release__title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.release__lead {
+  font-size: 14px;
+  font-weight: 600;
+}
+.release__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--muted);
+}
+.release-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 6px 0;
+}

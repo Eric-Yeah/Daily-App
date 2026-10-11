@@ -1,6 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TabBar } from './components/TabBar';
+import { UpdateBanner, WhatsNew } from './components/Updates';
 import { useAuth } from './lib/auth';
 import { useLock } from './lib/lock';
 import { pullSettings } from './lib/settingsSync';
@@ -36,6 +37,8 @@ export function App() {
         {route === 'mehr' && <MorePage />}
       </ErrorBoundary>
       <TabBar current={route} />
+      <UpdateBanner />
+      <WhatsNew />
     </div>
   );
 }

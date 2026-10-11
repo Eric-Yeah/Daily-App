@@ -60,6 +60,10 @@ Welche Ansicht vorgewählt ist und was die Countdowns anzeigen, hängt von der U
 
 Jeder Push auf `main` baut die App automatisch und veröffentlicht sie (`.github/workflows/deploy.yml`). Vorher laufen `npm run check:public` (keine Schlüssel, E-Mail-Adressen oder Rechnernamen im Code), die Tests, die Datenbank-Tests und eine Prüfung, dass kein Schlüssel im Build steckt.
 
+### Neue Versionen
+
+Gibt es eine neue Version, zeigt Daily unten „Neue Version verfügbar“ mit **Aktualisieren**. Danach erscheint einmal „Neu in Version …“ mit den Neuerungen; alle früheren stehen unter *Mehr → Was ist neu*. Die Texte pflegt man in `src/lib/releaseNotes.ts`, die Versionsnummer in `package.json`.
+
 ### Am iPhone installieren
 
 1. In **Safari** `https://eric-yeah.github.io/Daily-App/` öffnen.

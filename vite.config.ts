@@ -49,7 +49,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         injectRegister: false,
         manifest: {
           id: BASE,
