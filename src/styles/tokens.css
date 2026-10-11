@@ -24,6 +24,9 @@
   --alert-text: #EBD9DC;
   --input-border: #4A5B70;
   --check: #5B94F0;
+  --phase-morning: #B45309; /* amber: morning tab */
+  --phase-afternoon: #2B66D1; /* blue: afternoon tab (= primary) */
+  --phase-evening: #5B4BC4; /* indigo: evening tab */
 
   --font-sans: 'Plus Jakarta Sans', sans-serif; /* same fallback as the mockups (affects glyphs like ↗) */
   --font-mono: 'IBM Plex Mono', monospace;

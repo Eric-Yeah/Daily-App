@@ -86,6 +86,63 @@
   color: var(--on-primary);
 }
 
+/* Day-part switcher on Today: icon + label, each part has its own colour, the current part carries a dot */
+.view-switcher {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.segmented--views button {
+  position: relative;
+  height: 58px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.segmented--views button[data-view='morning'][aria-selected='true'] {
+  background: var(--phase-morning);
+}
+.segmented--views button[data-view='afternoon'][aria-selected='true'] {
+  background: var(--phase-afternoon);
+}
+.segmented--views button[data-view='evening'][aria-selected='true'] {
+  background: var(--phase-evening);
+}
+.segmented--views button[aria-selected='true'] svg {
+  stroke-width: 2.4;
+}
+.segmented__now {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pos);
+  box-shadow: 0 0 0 2px var(--card);
+}
+.segmented--views button[aria-selected='true'] .segmented__now {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.view-switcher__now {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--link);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.view-switcher__now .segmented__now {
+  position: static;
+  flex: none;
+  box-shadow: none;
+}
+
 /* ---------- Index strip ---------- */
 .index-strip {
   display: flex;

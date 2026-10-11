@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.7.0',
+    date: '2026-10-11',
+    title: 'Klarere Tageszeit-Leiste',
+    notes: [
+      'Die Leiste oben auf „Heute“ zeigt jetzt Symbole: Sonnenaufgang für Morgen, Sonne für Nachmittag, Mond für Abend.',
+      'Die gewählte Tageszeit hat eine eigene Farbe (Orange, Blau, Violett) und ist dadurch sofort erkennbar.',
+      'Ein grüner Punkt markiert die Tageszeit, die gerade wirklich ist. Schaust du dir eine andere an, steht darunter „Jetzt ist …“ und ein Tipp bringt dich zurück.',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-10-11',
     title: 'Sparpläne im Depot',

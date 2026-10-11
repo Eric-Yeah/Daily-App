@@ -33,7 +33,11 @@ export function Today() {
 
   const source = getDataSource();
   const marketLive = useMarketLive();
-  const switcher = <ViewSwitcher value={view} onChange={choose} />;
+  const backToNow = () => {
+    manualView = null;
+    setView(pickView(now, settings));
+  };
+  const switcher = <ViewSwitcher value={view} current={pickView(now, settings)} onChange={choose} onNow={backToNow} />;
   const banner = source.kind === 'mock' && !marketLive ? <MockBanner /> : null;
 
   return (
