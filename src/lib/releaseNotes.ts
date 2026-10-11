@@ -9,6 +9,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.2.1',
+    date: '2026-10-11',
+    title: 'Mehr Nachrichtenquellen',
+    notes: [
+      'Neue Quellen bei den Meldungen: ZEIT ONLINE (mit vielen dpa-Meldungen), Handelsblatt, SPIEGEL, FAZ, BBC News und MarketWatch.',
+      'Reuters und dpa selbst bieten keine freien Feeds an und sind deshalb nicht dabei.',
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-10-11',
     title: 'Echte Kurse, Face-ID-Anmeldung und Hinweise zu neuen Versionen',

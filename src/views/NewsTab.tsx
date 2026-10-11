@@ -66,7 +66,7 @@ export function NewsTab() {
         </>
       )}
       <p class="disclaimer">
-        {DISCLAIMER} Quellen: tagesschau.de, CNBC, EZB, Federal Reserve, Bundesbank und die GDELT-Nachrichtensuche. Gespeichert werden nur Titel, Anreißer und
+        {DISCLAIMER} Quellen: tagesschau.de, ZEIT ONLINE, Handelsblatt, SPIEGEL, FAZ, BBC News, CNBC, MarketWatch, EZB, Federal Reserve, Bundesbank und die GDELT-Nachrichtensuche. Gespeichert werden nur Titel, Anreißer und
         Link; den ganzen Artikel liest du beim Original.
       </p>
     </main>

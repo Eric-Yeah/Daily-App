@@ -25,6 +25,13 @@ const FEEDS: Feed[] = [
   { id: 'rss:tagesschau-finanzen', url: 'https://www.tagesschau.de/wirtschaft/finanzen/index~rss2.xml', source: 'tagesschau.de', lang: 'de', official: false },
   { id: 'rss:cnbc-markets', url: 'https://www.cnbc.com/id/20910258/device/rss/rss.html', source: 'CNBC', lang: 'en', official: false },
   { id: 'rss:cnbc-economy', url: 'https://www.cnbc.com/id/10000664/device/rss/rss.html', source: 'CNBC', lang: 'en', official: false },
+  // Reuters and dpa offer no free feeds. Zeit Online carries dpa reports; the others cover German and international markets.
+  { id: 'rss:zeit-wirtschaft', url: 'https://newsfeed.zeit.de/wirtschaft/index', source: 'ZEIT ONLINE', lang: 'de', official: false },
+  { id: 'rss:handelsblatt', url: 'https://www.handelsblatt.com/contentexport/feed/schlagzeilen', source: 'Handelsblatt', lang: 'de', official: false },
+  { id: 'rss:spiegel-wirtschaft', url: 'https://www.spiegel.de/wirtschaft/index.rss', source: 'SPIEGEL', lang: 'de', official: false },
+  { id: 'rss:faz-finanzen', url: 'https://www.faz.net/rss/aktuell/finanzen/', source: 'FAZ', lang: 'de', official: false },
+  { id: 'rss:bbc-business', url: 'https://feeds.bbci.co.uk/news/business/rss.xml', source: 'BBC News', lang: 'en', official: false },
+  { id: 'rss:marketwatch', url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', source: 'MarketWatch', lang: 'en', official: false },
   { id: 'rss:ecb', url: 'https://www.ecb.europa.eu/rss/press.html', source: 'EZB', lang: 'en', official: true },
   { id: 'rss:fed', url: 'https://www.federalreserve.gov/feeds/press_all.xml', source: 'Federal Reserve', lang: 'en', official: true },
   { id: 'rss:bundesbank', url: 'https://www.bundesbank.de/service/rss/de/633286/feed.rss', source: 'Bundesbank', lang: 'de', official: true },
@@ -79,14 +86,25 @@ Deno.serve(async (req) => {
   // 1. Feeds
   const candidates: Candidate[] = [];
   const feedTexts = await Promise.all(FEEDS.map((f) => fetchText(f.url)));
+  // Per feed: items read / kept, or "failed" if it could not be fetched (shows up in the response)
+  const feedStats: Record<string, string> = {};
   FEEDS.forEach((f, i) => {
-    for (const item of parseFeed(feedTexts[i] ?? '')) {
+    const text = feedTexts[i];
+    if (text === null) {
+      feedStats[f.id] = 'failed';
+      return;
+    }
+    const items = parseFeed(text);
+    let kept = 0;
+    for (const item of items) {
       if (!item.publishedAt || item.publishedAt.getTime() < minDate) continue;
       const found = matchTopics(`${item.title} ${item.teaser ?? ''}`, topics);
       // General feeds: only news about the depot's topics. Central banks: always (rates matter for everything).
       if (!found.length && !f.official) continue;
       candidates.push({ ...item, source: f.source, lang: f.lang, feed: f.id, official: f.official, topics: found });
+      kept++;
     }
+    feedStats[f.id] = `${kept}/${items.length}`;
   });
 
   // 2. GDELT search for the most widely held topics (rate limit: one request every 5 seconds)
@@ -210,5 +228,5 @@ ${RULES}`,
   // 6. Keep the table small: nothing older than 14 days
   await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());
 
-  return json(200, { candidates: candidates.length, stored: rows.length, summarised, ai: aiStop ?? 'ok' });
+  return json(200, { candidates: candidates.length, stored: rows.length, summarised, ai: aiStop ?? 'ok', feeds: feedStats });
 });
