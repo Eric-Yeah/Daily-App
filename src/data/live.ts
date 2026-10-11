@@ -4,6 +4,7 @@ import { getSettings } from '../lib/settings';
 import { buildStudyDay, type Exam } from '../lib/studyday';
 import { daily, supabase } from '../lib/supabase';
 import { formatTime } from '../lib/format';
+import { readingMinutes } from '../lib/readingTime';
 import { buildTraining, type FitnessDay } from '../lib/training';
 import { isoDate, zonedParts } from '../lib/time';
 import { empty, failed, ok, type Block, type DayEntry, type MarketEvent, type NewsItem, type Training } from './types';
@@ -66,6 +67,22 @@ export async function loadNews(sinceIso: string, limit = 200): Promise<Block<Liv
       };
     }),
   );
+}
+
+export type NewsDetail =
+  | { status: 'ok'; paragraphs: string[]; minutes: number }
+  | { status: 'no_text' | 'short' | 'unreachable' | 'budget' | 'no_key' | 'error' };
+
+/** The longer AI summary (1 to 2 minutes) of one news item; the Edge Function reads the article and caches the result. */
+export async function loadNewsDetail(itemId: string): Promise<NewsDetail> {
+  const { data, error } = await supabase().functions.invoke('daily-news-detail', { body: { itemId: Number(itemId) } });
+  if (error || !data) return { status: 'error' };
+  const status = (data as { status?: string }).status;
+  if (status === 'ok' && typeof data.summary === 'string') {
+    const paragraphs = data.summary.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+    return { status: 'ok', paragraphs, minutes: readingMinutes('', [{ title: '', text: paragraphs.join(' ') }]) };
+  }
+  return status === 'no_text' || status === 'short' || status === 'unreachable' || status === 'budget' || status === 'no_key' ? { status } : { status: 'error' };
 }
 
 export type WrapKind = 'morning' | 'afternoon' | 'evening';

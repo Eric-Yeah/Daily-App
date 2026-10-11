@@ -4,6 +4,7 @@ import { headlineDrivers, importantItems, inDays, rankNews, type NewsInput } fro
 import { gdeltQuery, matchTopics, topicIndex, topTopics } from './newsTopics.ts';
 import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
 import { liveCandidates, parseLive } from './liveblog.ts';
+import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseDetail } from './article.ts';
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 
 describe('RSS', () => {
@@ -250,5 +251,70 @@ describe('long overview plan', () => {
   it('lists distinct sources, at most four', () => {
     const items = [mk(1), mk(2), mk(3, 'https://example.com/1'), mk(4), mk(5), mk(6)];
     expect(sectionSources(items).map((s) => s.url)).toEqual(['https://example.com/1', 'https://example.com/2', 'https://example.com/4', 'https://example.com/5']);
+  });
+});
+
+describe('Artikel für die ausführliche Zusammenfassung', () => {
+  const para = (n: number) => `Absatz ${n}: Die Notenbank hat ihre Prognose für das Wachstum im kommenden Jahr leicht angehoben und verweist auf robuste Konsumausgaben.`;
+  const page = (inner: string, head = '') =>
+    `<html><head>${head}<script>var ad = "<p>Werbung im Skript, das nie Text sein darf, weil es Code ist.</p>";</script></head><body>
+      <nav><p>Startseite Wirtschaft Politik Sport und viele weitere Menüpunkte der Seite</p></nav>${inner}<footer><p>Impressum und Datenschutz und Nutzungsbedingungen der Seite</p></footer></body></html>`;
+
+  it('liest die Absätze des Artikels und lässt Menü, Fuß und Skripte weg', () => {
+    const html = page(`<article><header><p>Überschrift-Teaser im Kopf des Artikels, der doppelt wäre</p></header>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<p>${para(n)}</p>`).join('')}<p>Anzeige: Jetzt Depot eröffnen und profitieren</p></article>`);
+    const a = extractArticle(html);
+    expect(a.paywall).toBe(false);
+    expect(a.text).toContain('Absatz 1');
+    expect(a.text).toContain('Absatz 10');
+    expect(a.text).not.toMatch(/Startseite|Impressum|Werbung im Skript|Anzeige|Teaser im Kopf/);
+    expect(classifyArticle(a)).toBe('ok');
+  });
+  it('erkennt eine Bezahlschranke an der Angabe der Seite und fasst dann nichts zusammen', () => {
+    const ld = `<script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","isAccessibleForFree":"False","articleBody":"${'Anreißer '.repeat(20)}"}</script>`;
+    const html = page(`<article>${[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `<p>${para(n)}</p>`).join('')}</article>`, ld);
+    const a = extractArticle(html);
+    expect(a.paywall).toBe(true);
+    expect(classifyArticle(a)).toBe('no_text');
+  });
+  it('erkennt die Bezahlschranke auch in @graph und bei isAccessibleForFree: false', () => {
+    const ld = `<script type="application/ld+json">{"@graph":[{"@type":"WebSite"},{"@type":["Article","NewsArticle"],"isAccessibleForFree":false}]}</script>`;
+    expect(extractArticle(page('<article><p>x</p></article>', ld)).paywall).toBe(true);
+    const free = `<script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":true}</script>`;
+    expect(extractArticle(page('<article><p>x</p></article>', free)).paywall).toBe(false);
+  });
+  it('nur Anreißer, Skript-Seiten und leere Seiten: kein lesbarer Text', () => {
+    expect(classifyArticle(extractArticle(page('<article><p>Nur ein kurzer Anreißer ohne den eigentlichen Artikel dahinter.</p></article>')))).toBe('no_text');
+    expect(classifyArticle(extractArticle('<html><body><div id="app"></div></body></html>'))).toBe('no_text');
+  });
+  it('kurze Artikel bekommen keine lange Fassung', () => {
+    const html = page(`<article>${[1, 2, 3, 4, 5].map((n) => `<p>${para(n)}</p>`).join('')}</article>`);
+    expect(classifyArticle(extractArticle(html))).toBe('short');
+  });
+  it('nutzt den Artikeltext aus JSON-LD, wenn er länger ist, und begrenzt die Länge für die KI', () => {
+    const body = 'Ein langer Satz über die Märkte und die Zinsen. '.repeat(600);
+    const ld = `<script type="application/ld+json">{"@type":"NewsArticle","articleBody":"${body}"}</script>`;
+    const a = extractArticle(page('<article><p>Kurzer Absatz mit genug Zeichen, um mitzuzählen, aber viel kürzer.</p></article>', ld));
+    expect(a.text.length).toBeLessThanOrEqual(MAX_ARTICLE_CHARS);
+    expect(a.text.length).toBeGreaterThan(10_000);
+  });
+  it('ruft nur öffentliche https-Seiten ab', () => {
+    expect(isFetchableUrl('https://www.tagesschau.de/wirtschaft/a.html')).toBe(true);
+    for (const bad of ['http://www.tagesschau.de/a', 'https://127.0.0.1/a', 'https://[::1]/a', 'https://localhost/a', 'https://intern.internal/a', 'https://example.com:8443/a', 'ftp://example.com/a', 'kein link'])
+      expect(isFetchableUrl(bad)).toBe(false);
+  });
+  it('der Prompt nennt 1 bis 2 Minuten, die Regeln und trennt den Artikel als Daten ab', () => {
+    expect(detailSystem('Regeln (immer einhalten): …')).toMatch(/höchstens 300 Wörter/);
+    expect(detailSystem('Regeln (immer einhalten): …')).toContain('Regeln (immer einhalten)');
+    expect(detailUser({ title: 'T', source: 'S', lang: 'de' }, 'Text')).toContain('<artikel>\nText\n</artikel>');
+  });
+  it('prüft die Antwort der KI: zu kurz oder falsch geformt wird verworfen, zu lang auf ganze Sätze gekürzt', () => {
+    const words = (n: number) => Array.from({ length: n }, (_, i) => `Wort${i}`).join(' ') + '.';
+    expect(parseDetail(null)).toBeNull();
+    expect(parseDetail({ summary: 5 })).toBeNull();
+    expect(parseDetail({ summary: 'Zu kurz.' })).toBeNull();
+    expect(parseDetail({ summary: `${words(60)}\n\n\n  ${words(60)}` })).toBe(`${words(60)}\n\n${words(60)}`);
+    const long = parseDetail({ summary: Array.from({ length: 400 }, (_, i) => `Das ist Satz Nummer ${i} mit etwas Text.`).join(' ') })!;
+    expect(long.length).toBeLessThanOrEqual(2800);
+    expect(long.endsWith('.')).toBe(true);
   });
 });

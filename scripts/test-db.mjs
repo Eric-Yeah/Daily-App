@@ -387,6 +387,27 @@ await test('Live-Blog: Wichtigkeit und Länge begrenzt', () =>
   ),
 );
 
+// --- Ausführliche Zusammenfassung (0011) ---
+const detailItem = (await asCommit('service_role', null, () => db.query("select id from daily.news_items limit 1"))).rows[0].id;
+await asCommit('service_role', null, () =>
+  db.query("insert into daily.news_details (item_id, status, summary, model) values ($1, 'ok', 'Eigene Zusammenfassung', 'test')", [detailItem]),
+);
+
+await test('Ausführlich: Besitzer liest, fremdes Konto und anon nicht, nur der Server schreibt', async () => {
+  await as('authenticated', OWNER, async () => assert.equal((await db.query('select * from daily.news_details')).rowCount, 1));
+  await as('authenticated', OTHER, async () => assert.equal((await db.query('select * from daily.news_details')).rowCount, 0));
+  await as('anon', null, () => rejects(db.query('select * from daily.news_details'), /permission denied/));
+  await as('authenticated', OWNER, () => rejects(db.query("insert into daily.news_details (item_id, status) values (1, 'no_text')"), /permission denied/));
+});
+
+await test('Ausführlich: Status und Text passen zusammen, Länge begrenzt', async () => {
+  const bad = (sql, params = []) => as('service_role', null, () => rejects(db.query(sql, params), /check constraint/));
+  await bad("insert into daily.news_details (item_id, status) values ($1, 'ok')", [detailItem]);
+  await bad("insert into daily.news_details (item_id, status, summary) values ($1, 'no_text', 'Text')", [detailItem]);
+  await bad("insert into daily.news_details (item_id, status) values ($1, 'paywall')", [detailItem]);
+  await bad("insert into daily.news_details (item_id, status, summary) values ($1, 'ok', $2)", [detailItem, 'x'.repeat(3001)]);
+});
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

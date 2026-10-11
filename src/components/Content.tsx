@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { AlertItem, Block, DayEntry, DayNoteStore, NewsItem, Task, TaskStore, Training } from '../data/types';
+import { currentSession } from '../lib/auth';
 import { formatAge, formatPct, formatPositions } from '../lib/format';
+import { canSummarise } from '../lib/newsDetail';
 import { useResync } from '../lib/resync';
 import { InlineState } from './Block';
 import { ExternalLink } from './Market';
+import { NewsDetailBox } from './NewsDetail';
 
 // News texts are always rendered as plain text (JSX escapes), never as HTML.
 
@@ -29,6 +32,7 @@ export function AlertCard({ alert }: { alert: AlertItem }) {
 }
 
 export function NewsList({ title, items, now }: { title: string; items: NewsItem[]; now: Date }) {
+  const signedIn = !!currentSession();
   return (
     <section class="section">
       <h2>{title}</h2>
@@ -46,6 +50,7 @@ export function NewsList({ title, items, now }: { title: string; items: NewsItem
               {n.title}
             </h3>
             <p class="news__summary">{n.headlineOnly ? `Nur Überschrift verfügbar. ${n.summary}` : n.summary}</p>
+            {signedIn && canSummarise(n.id) && <NewsDetailBox id={n.id} />}
             <span class="news__foot">
               <span class="muted">
                 {n.source} · {formatAge((now.getTime() - n.publishedAt.getTime()) / 60000)}

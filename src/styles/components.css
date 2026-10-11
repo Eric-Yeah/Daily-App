@@ -544,6 +544,20 @@
   line-height: 21px;
   color: var(--text-soft);
 }
+.news__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.news__more {
+  align-self: flex-start;
+  padding: 0;
+  text-align: left;
+}
+.news__more:disabled {
+  color: var(--muted);
+  cursor: default;
+}
 .news__foot {
   display: flex;
   justify-content: space-between;

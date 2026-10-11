@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.0',
+    date: '2026-10-11',
+    title: 'Ausführliche News',
+    notes: [
+      'Neu bei jeder Meldung: „Ausführlich (1 bis 2 Min.)“. Ein Tipp, und die KI liest den Artikel und fasst ihn in eigenen Worten auf etwa 100 bis 300 Wörter zusammen. Die Kurzfassung bleibt wie sie ist.',
+      'Die Zusammenfassung entsteht nur auf Tipp und wird danach gespeichert, ein Artikel kostet also höchstens einmal etwa 0,1 Cent. Gespeichert wird nur die Zusammenfassung, nie der Artikel.',
+      'Hinter einer Bezahlschranke gibt es keine ausführliche Fassung: Die App sagt das offen, statt eine Überschrift aufzublasen oder etwas zu raten. Bei kurzen Artikeln reicht die Kurzfassung.',
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-10-11',
     title: 'Daily am Mac',

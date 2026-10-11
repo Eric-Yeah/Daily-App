@@ -189,7 +189,7 @@ export function NewsTab() {
       )}
       <p class="disclaimer">
         {DISCLAIMER} Quellen: tagesschau.de, Handelsblatt, FAZ, DER SPIEGEL, ZEIT ONLINE, n-tv, CNBC, MarketWatch, BBC News, The Guardian, EZB, Federal Reserve, Bank of England, Bundesbank. Gespeichert
-        werden nur Titel, Anreißer und Link; den ganzen Artikel liest du beim Original.
+        werden nur Titel, Anreißer und Link, nie der Artikel; „Ausführlich“ speichert nur die KI-Zusammenfassung. Den ganzen Artikel liest du beim Original.
       </p>
     </main>
   );
