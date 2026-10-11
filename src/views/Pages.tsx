@@ -3,6 +3,7 @@ import { Header } from '../components/Header';
 import { ReleaseHistory } from '../components/Updates';
 import { formatDateLong, formatPct } from '../lib/format';
 import { currentSession, deletePasskey, listPasskeys, passkeysSupported, registerPasskey, signOut, useAuth, type PasskeyInfo } from '../lib/auth';
+import { biometricName, notificationSettingsHint } from '../lib/device';
 import { disableLock, lockEnabled, lockErrorText, webAuthnLock } from '../lib/lock';
 import { aiSpentThisMonth, disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 import { isClockPinned } from '../lib/clock';
@@ -140,7 +141,7 @@ function SecuritySection() {
     const err = await registerPasskey();
     setBusy(false);
     if (err) return setPasskeyMessage(err);
-    setPasskeyMessage('Passkey eingerichtet. Beim nächsten Anmelden reicht Face ID.');
+    setPasskeyMessage(`Passkey eingerichtet. Beim nächsten Anmelden reicht ${biometricName()}.`);
     setPasskeys(await listPasskeys());
   };
 
@@ -159,7 +160,7 @@ function SecuritySection() {
     try {
       await webAuthnLock.enroll();
       setEnabled(true);
-      setMessage('Face ID ist eingerichtet. Ab dem nächsten Öffnen fragt Daily danach.');
+      setMessage(`${biometricName()} ist eingerichtet. Ab dem nächsten Öffnen fragt Daily danach.`);
     } catch (e) {
       setMessage(lockErrorText(e));
     }
@@ -177,13 +178,13 @@ function SecuritySection() {
         <h2>Sicherheit</h2>
         <div class="setting">
           <span>
-            App-Sperre mit Face ID
+            App-Sperre mit {biometricName()}
             <span class="setting__hint">
               {enabled
-                ? 'An auf diesem Gerät. Schützt vor fremden Händen am entsperrten Handy.'
+                ? 'An auf diesem Gerät. Schützt vor fremden Händen am entsperrten Gerät.'
                 : available === false
                   ? 'Dieses Gerät bietet kein Face ID oder Touch ID für Web-Apps.'
-                  : 'Beim Öffnen und nach einer Pause fragt Daily nach Face ID.'}
+                  : `Beim Öffnen und nach einer Pause fragt Daily nach ${biometricName()}. Gilt nur für dieses Gerät, auf jedem Gerät einmal einrichten.`}
             </span>
           </span>
           {enabled ? (
@@ -222,8 +223,8 @@ function SecuritySection() {
           <>
             <div class="setting">
               <span>
-                Anmeldung mit Face ID (Passkey)
-                <span class="setting__hint">Statt Passwort. Das Passwort bleibt als Rückfall. Noch im Test bei Supabase.</span>
+                Anmeldung mit {biometricName()} (Passkey)
+                <span class="setting__hint">Statt Passwort, auf jedem Gerät einmal einrichten. Das Passwort bleibt als Rückfall. Noch im Test bei Supabase.</span>
               </span>
               <button class="button" type="button" onClick={addPasskey} disabled={busy}>
                 Hinzufügen
@@ -275,13 +276,13 @@ const PUSH_TIMES: { key: 'pushMorning' | 'pushAfternoon' | 'pushEvening'; label:
   { key: 'pushEvening', label: 'Abendbriefing', options: ['17:35', '17:45', '18:00', '18:30', '19:00', '20:00'] },
 ];
 
-const PUSH_HINT: Record<PushState, string> = {
+const pushHint = (): Record<PushState, string> => ({
   unsupported: 'Dieser Browser kann keine Benachrichtigungen.',
   'needs-install': 'Am iPhone geht das nur in der App vom Home-Bildschirm: Safari → Teilen → „Zum Home-Bildschirm“, dann Daily von dort öffnen.',
-  denied: 'Benachrichtigungen sind blockiert. iPhone: Einstellungen → Mitteilungen → Daily → Mitteilungen erlauben.',
+  denied: `Benachrichtigungen sind blockiert. ${notificationSettingsHint()}`,
   off: 'Aus auf diesem Gerät. Die Nachrichten enthalten nie Zahlen, nur „Dein Briefing ist fertig“.',
   on: 'An auf diesem Gerät.',
-};
+});
 
 function NotificationsSection() {
   const auth = useAuth();
@@ -316,7 +317,7 @@ function NotificationsSection() {
       <div class="setting">
         <span>
           Push auf diesem Gerät
-          <span class="setting__hint">{state ? PUSH_HINT[state] : ' '}</span>
+          <span class="setting__hint">{state ? pushHint()[state] : ' '}</span>
         </span>
         {(state === 'on' || state === 'off') && (
           <button class={`button${state === 'on' ? ' button--secondary' : ''}`} type="button" disabled={busy} onClick={toggle}>

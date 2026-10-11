@@ -1428,3 +1428,54 @@ a.button--secondary:hover {
   border-radius: 50%;
   background: var(--link);
 }
+
+/* ---------- Wide windows (Mac, iPad landscape): navigation moves to a side rail ----------
+   The phone layout above stays exactly as designed; this only applies from 900 px up. */
+@media (min-width: 900px) {
+  :root {
+    --tabbar-height: 0px;
+  }
+  body {
+    padding-left: 200px;
+  }
+  .app {
+    max-width: 640px;
+  }
+  .page {
+    padding-bottom: 48px;
+  }
+  .tabbar {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: none;
+    width: 200px;
+    max-width: none;
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 4px;
+    padding: calc(28px + env(safe-area-inset-top)) 12px 20px;
+    border-top: 0;
+    border-right: 1px solid var(--tabbar-border);
+  }
+  .tabbar a {
+    flex-direction: row;
+    min-width: 0;
+    padding: 10px 12px;
+    gap: 12px;
+    font-size: 15px;
+    border-radius: var(--radius-control);
+  }
+  .tabbar a:hover {
+    background: var(--card);
+    color: var(--text);
+  }
+  .sheet {
+    left: calc(50% + 100px);
+    right: auto;
+    transform: translateX(-50%);
+    width: min(608px, calc(100vw - 232px));
+  }
+}

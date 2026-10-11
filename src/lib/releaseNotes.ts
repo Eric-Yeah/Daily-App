@@ -9,6 +9,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.8.0',
+    date: '2026-10-11',
+    title: 'Daily am Mac',
+    notes: [
+      'Daily läuft jetzt auch am Mac: In breiten Fenstern steht die Navigation links, der Inhalt bleibt gut lesbar. Das iPhone-Layout ändert sich nicht.',
+      'Dein Stand ist auf iPhone und Mac derselbe, weil beide dasselbe Konto lesen. Kommst du ins Fenster zurück, laden Aufgaben, Depot, News und Einstellungen vom anderen Gerät automatisch neu, auch ohne dass du die App neu startest.',
+      'CSV-Import: Dateien aus Numbers und Excel am Mac werden erkannt (UTF-8, „CSV (Macintosh)“, „Unicode-Text“), Umlaute stimmen. Du kannst die Datei auch ins Fenster ziehen.',
+      'Die Sperre heißt je nach Gerät Face ID oder Touch ID. Sie gilt pro Gerät: Am Mac einmal unter „Mehr → Sicherheit“ einrichten, genauso den Passkey.',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-10-11',
     title: 'Klarere Tageszeit-Leiste',

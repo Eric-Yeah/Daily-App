@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
           start_url: BASE,
           scope: BASE,
           display: 'standalone',
-          orientation: 'portrait',
+          categories: ['finance', 'productivity'],
           background_color: '#1E2835',
           theme_color: '#1E2835',
           icons: [

@@ -1,6 +1,6 @@
 # Daily
 
-Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** und **Abend** mit Depot-Überblick, Marktmeldungen, Training, Terminen und Aufgaben.
+Deine persönliche Tages-App (PWA, iPhone zuerst, läuft auch am Mac): **Morgen**, **Nachmittag** und **Abend** mit Depot-Überblick, Marktmeldungen, Training, Terminen und Aufgaben.
 
 - Adresse: `https://eric-yeah.github.io/Daily-App/`
 - Design in [`design/`](design/) (nur Referenz, wird nicht ausgeliefert). Der Projektbrief liegt nur lokal und ist nicht im Repository.
@@ -49,7 +49,7 @@ Welche Ansicht vorgewählt ist und was die Countdowns anzeigen, hängt von der U
 
 | Befehl | Was er macht |
 |---|---|
-| `npm test` | Tests (Zahlenformat, Zeitlogik, Sperre, Aufgaben, ISIN, CSV, Depot-Berechnung) |
+| `npm test` | Tests (Zahlenformat, Zeitlogik, Sperre, Aufgaben, ISIN, CSV inkl. Mac-Formate, Depot-Berechnung) |
 | `npm run test:db` | Datenbank-Tests: Migrationen und Row Level Security in einer Test-Datenbank (nie die echte) |
 | `npm run check:public` | Prüft, dass nichts Privates im Code steht |
 | `npm run build` | Typprüfung + fertige App in `dist/` |
@@ -69,6 +69,21 @@ Gibt es eine neue Version, zeigt Daily unten „Neue Version verfügbar“ mit *
 1. In **Safari** `https://eric-yeah.github.io/Daily-App/` öffnen.
 2. Teilen-Symbol (Quadrat mit Pfeil) → **Zum Home-Bildschirm** → *Hinzufügen*.
 3. Ab jetzt die App über das Symbol starten. Nur so funktionieren später auch Push-Nachrichten (iOS 16.4 oder neuer).
+
+### Am Mac installieren
+
+Daily läuft am Mac in jedem aktuellen Browser. Als eigene App im Dock:
+
+- **Safari** (macOS 14 oder neuer): `https://eric-yeah.github.io/Daily-App/` öffnen → Menü **Ablage → Zum Dock hinzufügen** → *Hinzufügen*.
+- **Chrome oder Edge:** Adressleiste → Symbol *Installieren* (oder Menü ⋮ → *Daily installieren*).
+
+Ab einer Fensterbreite von 900 px steht die Navigation links (Seitenleiste), darunter wie am iPhone unten. Am Mac geht Push (macOS 13 oder neuer) und Touch ID für die App-Sperre.
+
+### Gleicher Stand auf iPhone und Mac
+
+Beide Geräte melden sich mit demselben Konto an und lesen dieselben Tabellen in Supabase; Aufgaben, Depot, Einstellungen, Notizen, Meldungen und Briefings sind deshalb überall gleich. Es gibt keinen zweiten Speicher und keine zusätzliche Schnittstelle. Damit ein offenes Fenster nicht veraltet, lädt Daily beim Zurückkehren ins Fenster, wenn die Verbindung zurückkommt und alle 2 Minuten neu (`src/lib/resync.ts`); das sind dieselben gesicherten Abfragen wie sonst.
+
+**Pro Gerät** bleiben mit Absicht: die App-Sperre (Touch ID am Mac, Face ID am iPhone), der Passkey, die Push-Anmeldung und die Anmeldung selbst. Am Mac einmal einrichten: *Mehr → Sicherheit* (Sperre und Passkey) und *Mehr → Benachrichtigungen*. Der letzte Stand liegt auch am Mac nur im Arbeitsspeicher. Zum Absichern: am Mac die Sperre einschalten und bei fremden Rechnern abmelden (*Mehr → Sicherheit → Abmelden*).
 
 ## Supabase (ab M2)
 
@@ -95,7 +110,7 @@ Neue Migrationen kommen später genauso als nummerierte Dateien in `supabase/mig
 ### Anmelden und Face ID
 
 1. App öffnen → mit E-Mail und Passwort deines Study-App-Kontos anmelden. Du bleibst danach angemeldet.
-2. *Mehr* → *Sicherheit* → **Einrichten** → Face ID bestätigen.
+2. *Mehr* → *Sicherheit* → **Einrichten** → Face ID bestätigen (am Mac Touch ID).
 3. Ab jetzt fragt Daily beim Öffnen und nach einer Pause (einstellbar, Standard 5 Minuten) nach Face ID. Ohne Face ID geht es mit „Stattdessen mit Passwort“.
 
 **Ehrlicher Hinweis:** Die Face-ID-Sperre ist eine Schutzschicht gegen fremde Hände am entsperrten Handy. Sie läuft auf dem Gerät. Der eigentliche Schutz deiner Daten sind die Anmeldung und die Row Level Security in der Datenbank. Eine echte Anmeldung per Face ID gibt es als Passkey, siehe nächster Abschnitt.
@@ -126,7 +141,7 @@ Zugriff hat auch mit Passkey nur das Konto in `daily.owner`. Entfernen kannst du
 
 Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einstandskurs je Stück), trägst optional einen **Sparplan** ein (Betrag pro Monat und Tag, nur eine Notiz, nichts wird automatisch gebucht), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
 
-**CSV-Import:** Depot bei deinem Broker als CSV exportieren → *Depot* → *CSV-Import* → Datei wählen. Die App erkennt Trennzeichen, Zeichensatz (auch ältere Windows-Exporte), die Kopfzeile und die Spalten. Prüfe die Zuordnung und die Vorschau:
+**CSV-Import:** Depot bei deinem Broker als CSV exportieren → *Depot* → *CSV-Import* → Datei wählen. Die App erkennt Trennzeichen, Zeichensatz (UTF-8, ältere Windows-Exporte, Mac Roman aus „CSV (Macintosh)“, UTF-16 aus „Unicode-Text“), Zeilenenden, die Kopfzeile und die Spalten. Am Mac: Numbers → *Ablage → Exportieren → CSV*, Excel → *Sichern unter → CSV*. `.numbers` und `.xlsx` direkt liest Daily nicht. Die Datei kann ins Fenster gezogen werden. Prüfe die Zuordnung und die Vorschau:
 - Eine WKN-Spalte wird erkannt; eine Zeile braucht ISIN oder WKN. Mehrere Zeilen mit derselben ISIN/WKN (mehrere Käufe) werden zusammengefasst, der Einstandskurs wird gewichtet gemittelt.
 - Schon vorhandene ISINs/WKNs werden aktualisiert (Gruppe und Themen bleiben) oder übersprungen.
 - Zeilen ohne gültige ISIN (Prüfziffer) und ohne gültige WKN erscheinen als Fehler und werden nicht übernommen.

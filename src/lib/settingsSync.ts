@@ -54,10 +54,12 @@ async function flush() {
   await daily().from('settings').upsert(row);
 }
 
-/** Loads the settings row after login (creates it from the local values the first time). */
+/** Loads the settings row after login and when the window comes back (creates it from the local values the first time). */
 export async function pullSettings(): Promise<void> {
   const session = currentSession();
   if (!session) return;
+  // A change made here that is not sent yet must not be overwritten by the older row.
+  if (Object.keys(pending).length > 0) return;
   const { data, error } = await daily().from('settings').select('*').maybeSingle();
   if (error) return;
   if (data) updateSettings(fromRow(data), 'remote');

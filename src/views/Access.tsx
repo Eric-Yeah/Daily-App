@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { Header } from '../components/Header';
 import { passkeysSupported, signIn, signInWithPasskey, signOut, verifyPassword } from '../lib/auth';
+import { biometricName } from '../lib/device';
 import { lockErrorText, unlock, webAuthnLock } from '../lib/lock';
 
 export function LoginPage() {
@@ -16,7 +17,7 @@ export function LoginPage() {
     const err = await signIn(email.trim(), password);
     setBusy(false);
     if (err) setError(err);
-    else unlock(); // the password was just entered, no need to ask for Face ID right after
+    else unlock(); // the password was just entered, no need to ask for the biometric check right after
   };
 
   const withPasskey = async () => {
@@ -25,7 +26,7 @@ export function LoginPage() {
     const err = await signInWithPasskey();
     setBusy(false);
     if (err) setError(err);
-    else unlock(); // Face ID was just confirmed by the passkey itself
+    else unlock(); // the biometric check was just done by the passkey itself
   };
 
   return (
@@ -36,7 +37,7 @@ export function LoginPage() {
         {passkeysSupported() && (
           <>
             <button class="button button--wide" type="button" onClick={withPasskey} disabled={busy}>
-              Mit Face ID anmelden
+              Mit {biometricName()} anmelden
             </button>
             <p class="note">Geht, sobald du unter „Mehr → Sicherheit“ einen Passkey eingerichtet hast. Sonst melde dich mit dem Passwort an.</p>
           </>
@@ -140,7 +141,7 @@ export function LockScreen({ coverOnly = false }: { coverOnly?: boolean }) {
       {!coverOnly && (
         <section class="card gap-12">
           <button class="button button--wide" type="button" onClick={faceId}>
-            Mit Face ID entsperren
+            Mit {biometricName()} entsperren
           </button>
           {message && (
             <p class="form-error" role="alert">

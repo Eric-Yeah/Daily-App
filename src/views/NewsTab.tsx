@@ -7,6 +7,7 @@ import { loadNews, type LiveNews } from '../data/live';
 import { currentSession } from '../lib/auth';
 import { useNow } from '../lib/clock';
 import { MARKETS } from '../lib/markets';
+import { useResync } from '../lib/resync';
 import { activeCount, applyFilter, DEFAULT_FILTER, marketCounts, type NewsFilter } from '../lib/newsFilter';
 import type { Block } from '../data/types';
 import { DISCLAIMER } from './Pages';
@@ -20,6 +21,8 @@ export function NewsTab() {
   const [open, setOpen] = useState(false);
   const [limit, setLimit] = useState(PAGE);
   const signedIn = !!currentSession();
+  const [attempt, setAttempt] = useState(0);
+  useResync(() => setAttempt((n) => n + 1));
 
   useEffect(() => {
     if (!signedIn) return;
@@ -28,7 +31,7 @@ export function NewsTab() {
     return () => {
       alive = false;
     };
-  }, [signedIn, Math.floor(now.getTime() / 300000)]);
+  }, [signedIn, attempt, Math.floor(now.getTime() / 300000)]);
 
   const change = (patch: Partial<NewsFilter>) => {
     setFilter((f) => ({ ...f, ...patch }));

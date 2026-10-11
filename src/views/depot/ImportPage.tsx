@@ -114,9 +114,20 @@ export function ImportPage() {
             Exportiere dein Depot bei deinem Broker als CSV (Depotübersicht oder Bestand). Die Datei wird nur hier auf dem Gerät gelesen.
             Gespeichert werden nur Name, ISIN oder WKN, Stückzahl und Einstandskurs der Zeilen, die du bestätigst.
           </p>
-          <label class="button button--wide file-button">
-            CSV-Datei auswählen
-            <input class="visually-hidden" type="file" accept=".csv,text/csv,text/plain" onChange={(e) => readFile(e.currentTarget.files?.[0])} />
+          <p class="card-sub card-sub--loose">
+            Tabellen aus Numbers oder Excel am Mac gehen auch: erst als CSV sichern (Numbers: Ablage → Exportieren → CSV; Excel: Sichern unter →
+            CSV). „CSV (Macintosh)“ und „Unicode-Text“ erkennt Daily ebenfalls. Die Dateien <em>.numbers</em> und <em>.xlsx</em> selbst kann Daily nicht lesen.
+          </p>
+          <label
+            class="button button--wide file-button"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              void readFile(e.dataTransfer?.files?.[0]);
+            }}
+          >
+            CSV-Datei auswählen oder hierher ziehen
+            <input class="visually-hidden" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" onChange={(e) => readFile(e.currentTarget.files?.[0])} />
           </label>
         </section>
       )}

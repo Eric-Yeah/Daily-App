@@ -7,6 +7,7 @@ import { getDataSource } from '../../data/source';
 import { useNow } from '../../lib/clock';
 import { keepLastGood, type Snapshot } from '../../lib/lastgood';
 import { useOnline } from '../../lib/online';
+import { useResync } from '../../lib/resync';
 import { useSettings } from '../../lib/settings';
 import { pickView, type ViewKey } from '../../lib/time';
 import { Afternoon } from './Afternoon';
@@ -61,7 +62,7 @@ const lastGood = new Map<string, Snapshot<object>>();
 
 /**
  * Loads a view's data; reloads when the source or the minute changes, when the connection returns and when
- * the app becomes visible again. A failed block is replaced by its last good version (marked stale).
+ * the window gets focus or becomes visible again (see `useResync`). A failed block is replaced by its last good version (marked stale).
  */
 export function useViewData<T extends object>(key: string, load: () => Promise<T>, deps: unknown[]): ViewData<T> {
   const [data, setData] = useState<T | undefined>(() => lastGood.get(key)?.data as T | undefined);
@@ -69,15 +70,7 @@ export function useViewData<T extends object>(key: string, load: () => Promise<T
   const [attempt, setAttempt] = useState(0);
   const retry = () => setAttempt((n) => n + 1);
 
-  useEffect(() => {
-    const onVisible = () => document.visibilityState === 'visible' && retry();
-    window.addEventListener('online', retry);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.removeEventListener('online', retry);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, []);
+  useResync(retry);
 
   useEffect(() => {
     let alive = true;

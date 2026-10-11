@@ -4,6 +4,7 @@ import { TabBar } from './components/TabBar';
 import { UpdateBanner, WhatsNew } from './components/Updates';
 import { useAuth } from './lib/auth';
 import { useLock } from './lib/lock';
+import { useResync } from './lib/resync';
 import { pullSettings } from './lib/settingsSync';
 import { useRoute } from './router';
 import { LockScreen, LoginPage, NoAccessPage } from './views/Access';
@@ -20,6 +21,10 @@ export function App() {
   useEffect(() => {
     if (auth.status === 'ready') void pullSettings();
   }, [auth.status === 'ready' ? auth.session.user.id : '']);
+  // Settings changed on another device (the phone) arrive when this window gets focus again.
+  useResync(() => {
+    if (auth.status === 'ready') void pullSettings();
+  });
 
   if (auth.status === 'loading') return <div class="app" aria-busy="true" />;
   if (auth.status === 'signed-out') return <div class="app"><LoginPage /></div>;

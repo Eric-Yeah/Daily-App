@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
+import { biometricName } from './device';
 import { getSettings } from './settings';
 import { storage } from './storage';
 
-// App lock, stage 1: a local WebAuthn check (Face ID / Touch ID) on this device.
+// App lock, stage 1: a local WebAuthn check (Face ID on the iPhone, Touch ID on the Mac) on this device.
 // It protects against other hands on an unlocked phone; the real protection is the login + RLS.
 // Stage 2 (passkey as the actual login via Supabase) can be added as another LockMethod.
 
@@ -166,7 +167,8 @@ export function useLock(): { locked: boolean; covered: boolean } {
 export function lockErrorText(e: unknown): string {
   const name = e instanceof DOMException ? e.name : '';
   if (name === 'NotAllowedError') return 'Abgebrochen oder nicht erkannt. Versuch es nochmal.';
-  if (name === 'InvalidStateError') return 'Face ID ist auf diesem Gerät schon eingerichtet.';
-  if (name === 'SecurityError') return 'Face ID geht nur über die echte App-Adresse (https).';
-  return 'Face ID gerade nicht möglich.';
+  const bio = biometricName();
+  if (name === 'InvalidStateError') return `${bio} ist auf diesem Gerät schon eingerichtet.`;
+  if (name === 'SecurityError') return `${bio} geht nur über die echte App-Adresse (https).`;
+  return `${bio} gerade nicht möglich.`;
 }

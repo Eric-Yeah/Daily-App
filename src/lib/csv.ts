@@ -2,15 +2,36 @@
 // except for the rows you confirm.
 import { isValidIsin, isValidWkn, normalizeIsin, normalizeWkn } from './isin';
 
-/** German broker exports are often Windows-1252, not UTF-8. */
+/** Letters that show up in German text; used to tell Windows-1252 from Mac Roman. */
+const GERMAN_LETTERS = /[äöüÄÖÜß€]/g;
+const NON_ASCII = /[^\x00-\x7f]/g;
+
+/** How German-looking a decoded text is: known letters count for it, any other non-ASCII character against it. */
+function germanScore(text: string): number {
+  const known = text.match(GERMAN_LETTERS)?.length ?? 0;
+  const other = (text.match(NON_ASCII)?.length ?? 0) - known;
+  return known - 2 * other;
+}
+
+/**
+ * Broker exports and spreadsheet exports come in several encodings: UTF-8 (also from Numbers and Excel for Mac),
+ * UTF-16 ("Unicode-Text" from Excel), Windows-1252 (older Windows exports) and Mac Roman ("CSV (Macintosh)").
+ * The result is normalised to composed characters, because macOS tools sometimes write "ü" as "u" plus a diaeresis.
+ */
 export function decodeBytes(bytes: Uint8Array): string {
   let text: string;
-  try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    text = new TextDecoder('windows-1252').decode(bytes);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) text = new TextDecoder('utf-16le').decode(bytes);
+  else if (bytes[0] === 0xfe && bytes[1] === 0xff) text = new TextDecoder('utf-16be').decode(bytes);
+  else {
+    try {
+      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      const windows = new TextDecoder('windows-1252').decode(bytes);
+      const mac = new TextDecoder('macintosh').decode(bytes);
+      text = germanScore(mac) > germanScore(windows) ? mac : windows;
+    }
   }
-  return text.replace(/^﻿/, '');
+  return text.replace(/^\uFEFF/, '').normalize('NFC');
 }
 
 const DELIMITERS = [';', ',', '\t'] as const;
@@ -18,7 +39,7 @@ export type Delimiter = (typeof DELIMITERS)[number];
 
 /** Picks the delimiter that splits the first lines into the most consistent number of columns. */
 export function detectDelimiter(text: string): Delimiter {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim()).slice(0, 20);
+  const lines = text.split(/\r\n|\r|\n/).filter((l) => l.trim()).slice(0, 20);
   let best: Delimiter = ';';
   let bestScore = -1;
   for (const d of DELIMITERS) {

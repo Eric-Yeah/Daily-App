@@ -1,5 +1,7 @@
 // Web Push in the app: subscribe this device, store the subscription in daily.push_subscriptions.
-// On the iPhone this only works in the app added to the Home Screen (iOS 16.4 or newer).
+// On the iPhone this only works in the app added to the Home Screen (iOS 16.4 or newer). On the Mac,
+// Safari (macOS 13 or newer) and Chrome can receive them, installed as an app or not.
+import { notificationSettingsHint, platform } from './device';
 import { fromBase64Url } from './lock';
 import { daily, supabase } from './supabase';
 
@@ -17,15 +19,11 @@ export function isStandalone(): boolean {
 export type PushState = 'unsupported' | 'needs-install' | 'denied' | 'off' | 'on';
 
 export async function pushState(): Promise<PushState> {
-  if (!pushSupported()) return isIos() && !isStandalone() ? 'needs-install' : 'unsupported';
+  if (!pushSupported()) return platform() === 'ios' && !isStandalone() ? 'needs-install' : 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
   return sub ? 'on' : 'off';
-}
-
-function isIos(): boolean {
-  return /iPhone|iPad|iPod/.test(navigator.userAgent);
 }
 
 async function vapidKey(): Promise<string> {
@@ -37,7 +35,7 @@ async function vapidKey(): Promise<string> {
 export async function enablePush(): Promise<string | null> {
   if (!pushSupported()) return 'Dieses Gerät oder dieser Browser kann keine Benachrichtigungen.';
   const permission = await Notification.requestPermission();
-  if (permission !== 'granted') return 'Benachrichtigungen wurden nicht erlaubt. Du kannst das in den Einstellungen des iPhones ändern.';
+  if (permission !== 'granted') return 'Benachrichtigungen wurden nicht erlaubt. ' + notificationSettingsHint();
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub =

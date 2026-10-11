@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { AlertItem, Block, DayEntry, DayNoteStore, NewsItem, Task, TaskStore, Training } from '../data/types';
 import { formatAge, formatPct, formatPositions } from '../lib/format';
+import { useResync } from '../lib/resync';
 import { InlineState } from './Block';
 import { ExternalLink } from './Market';
 
@@ -137,6 +138,9 @@ export function DayCard({ entries }: { entries: DayEntry[] }) {
 
 export function useTasks(store: TaskStore): Block<Task[]> | undefined {
   const [block, setBlock] = useState<Block<Task[]>>();
+  const [attempt, setAttempt] = useState(0);
+  // Tasks added on another device show up when this window gets focus again.
+  useResync(() => setAttempt((n) => n + 1));
   useEffect(() => {
     let alive = true;
     const load = () => store.list().then((b) => alive && setBlock(b));
@@ -146,7 +150,7 @@ export function useTasks(store: TaskStore): Block<Task[]> | undefined {
       alive = false;
       unsubscribe();
     };
-  }, [store]);
+  }, [store, attempt]);
   return block;
 }
 

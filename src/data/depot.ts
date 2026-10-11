@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { currentSession } from '../lib/auth';
 import type { ImportItem } from '../lib/csv';
+import { useResync } from '../lib/resync';
 import { daily } from '../lib/supabase';
 import { invalidateMarket } from './market';
 import { failed, ok, type Block } from './types';
@@ -303,6 +304,9 @@ export function getDepotStore(): DepotStore {
 export function useDepot(): { block: Block<DepotData> | undefined; store: DepotStore } {
   const s = getDepotStore();
   const [block, setBlock] = useState<Block<DepotData>>();
+  const [attempt, setAttempt] = useState(0);
+  // Positions changed on another device show up when this window gets focus again.
+  useResync(() => setAttempt((n) => n + 1));
   useEffect(() => {
     let alive = true;
     const load = () => s.load().then((b) => alive && setBlock(b));
@@ -312,6 +316,6 @@ export function useDepot(): { block: Block<DepotData> | undefined; store: DepotS
       alive = false;
       off();
     };
-  }, [s]);
+  }, [s, attempt]);
   return { block, store: s };
 }
