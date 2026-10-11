@@ -159,10 +159,10 @@ select jobname, schedule, active from cron.job where jobname like 'daily-%';
 ## Kurse (ab M4)
 
 **So läuft es:** Die Edge Function `daily-prices` holt zu Handelszeiten alle 30 Minuten die Kurse und legt sie in der Datenbank ab (`price_snapshots` für den Tagesverlauf, `price_daily` für Schlusskurse). Die App liest nur aus der eigenen Datenbank und ruft nie einen Kursanbieter selbst auf.
-- **Yahoo Finance** (ohne Schlüssel): Kurse deiner Positionen, DAX, Euro Stoxx 50, S&P 500, Nasdaq 100 und die beiden US-Futures, ca. 15 Minuten verzögert. Zu jeder Position wird das Kurssymbol automatisch über die ISIN gesucht (Xetra bevorzugt) und in der Position gespeichert. Du kannst es im Positionsformular selbst eintragen.
-- **EODHD** (kostenlos, optional): holt abends den Schlusskurs nach, wenn Yahoo ihn für eine Xetra-Position nicht geliefert hat (höchstens 15 Abrufe pro Tag).
+- **EODHD** (kostenlos, mit deinem Schlüssel, 20 Abrufe pro Tag) ist die **Hauptquelle für die Schlusskurse** der Xetra-Positionen. Einmal pro Morgen (08:02 Uhr, Mo bis Fr) ersetzt es die vorläufigen Werte der letzten Tage durch die offiziellen; für eine neue Position holt es das ganze letzte Jahr in einem Abruf. Das reicht für bis zu etwa 10 Positionen. Damit stammen Depotwert, Vortagsänderung und Woche/Monat/Jahr aus der lizenzierten Quelle.
+- **Yahoo Finance** (ohne Schlüssel, inoffiziell) liefert die Tageskurven (ca. 15 Minuten verzögert), DAX, Euro Stoxx 50, S&P 500, Nasdaq 100 und die US-Futures sowie den vorläufigen Schlusskurs des Tages. Zu jeder Position wird das Kurssymbol automatisch über die ISIN gesucht (Xetra bevorzugt) und in der Position gespeichert; du kannst es im Positionsformular selbst eintragen. Ohne EODHD-Schlüssel kommen auch die Schlusskurse von Yahoo.
 - Zeiten: Xetra Mo bis Fr von 09:00 bis Handelsende, US-Indizes 15:30 bis 22:00 (Berliner Zeit, Sommer-/Winterzeit passt sich an). Feiertage ohne Handel liefern keine neuen Kurse.
-- **Ehrlich:** Yahoo bietet diese Schnittstelle inoffiziell an, die Nutzungsbedingungen erlauben automatische Abrufe nicht ausdrücklich. Sie kann ohne Vorwarnung ausfallen oder sich ändern. Dann bleiben die Kurse auf dem letzten Stand, und die App zeigt „—“ oder „ohne Kurs“. Es wird nie geschätzt oder erfunden. Positionen in anderen Währungen als Euro werden nicht umgerechnet und stehen unter „ohne Kurs“. Ein von dir eingetragener manueller Kurs gilt nur als Wert ohne Tagesänderung.
+- **Ehrlich:** Yahoo bietet seine Schnittstelle inoffiziell an, die Nutzungsbedingungen erlauben automatische Abrufe nicht ausdrücklich. Sie kann ohne Vorwarnung ausfallen oder sich ändern. Mit EODHD-Schlüssel bleibt dann das Depot mit den letzten Schlusskursen sichtbar; es fehlen die Tageskurve und die Indizes. Ohne Daten zeigt die App „—“ oder „ohne Kurs“. Es wird nie geschätzt oder erfunden. Positionen in anderen Währungen als Euro werden nicht umgerechnet und stehen unter „ohne Kurs“. Ein von dir eingetragener manueller Kurs gilt nur als Wert ohne Tagesänderung.
 - MSCI World und MSCI Emerging Markets haben keine kostenlose Indexquelle und fehlen deshalb in der Indexzeile.
 
 **Einmalig einrichten (du klickst):**
@@ -171,7 +171,7 @@ select jobname, schedule, active from cron.job where jobname like 'daily-%';
    ```bash
    npx supabase functions deploy daily-prices --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
    ```
-3. Optional, für den Schlusskurs-Rückfall: auf eodhd.com ein kostenloses Konto anlegen, den API-Schlüssel kopieren und in Supabase → *Edge Functions* → *Secrets* → *Add new secret* als `DAILY_EODHD_API_KEY` eintragen (nie in den Chat oder in Code).
+3. Empfohlen (Hauptquelle der Schlusskurse): auf eodhd.com ein kostenloses Konto anlegen, den API-Schlüssel kopieren und in Supabase → *Edge Functions* → *Secrets* → *Add new secret* als `DAILY_EODHD_API_KEY` eintragen (nie in den Chat oder in Code).
 4. Erster Test: Supabase → *Edge Functions* → `daily-prices` → *Test*; oder abwarten, bis der Zeitplan läuft. Danach zeigt `select symbol, count(*) from daily.price_snapshots group by symbol;`, welche Kurse angekommen sind.
 
 **Prüfen, ob der Zeitplan läuft** (SQL Editor):

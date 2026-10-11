@@ -147,3 +147,20 @@ export function openSessions(weekday: number, minute: number, tradingEndMinute: 
     us: minute >= 15 * 60 + 30 && minute <= 22 * 60 + 5,
   };
 }
+
+/** ISO day shifted by whole days. */
+export function addDays(day: string, n: number): string {
+  return new Date(Date.parse(`${day}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+}
+
+/**
+ * From which day an EODHD call must run for one symbol, or null if nothing is needed. EODHD is the licensed
+ * source of the closes; Yahoo only writes a provisional close for the day. So: no history at all → the whole
+ * year; otherwise from the oldest day of the last `lookbackDays` that is still a Yahoo value.
+ */
+export function eodhdFrom(rows: { day: string; source: string }[], today: string, yearAgo: string, lookbackDays = 7): string | null {
+  if (!rows.length) return yearAgo;
+  const since = addDays(today, -lookbackDays);
+  const open = rows.filter((r) => r.day >= since && r.source !== 'eodhd').map((r) => r.day);
+  return open.length ? open.sort()[0] : null;
+}

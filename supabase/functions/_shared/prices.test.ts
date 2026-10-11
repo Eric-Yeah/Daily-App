@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailyCloses, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickListing, toEodhdSymbol } from './prices.ts';
+import { addDays, dailyCloses, eodhdFrom, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickListing, toEodhdSymbol } from './prices.ts';
 
 // Invented example data; no real positions.
 const chart = (extra: object = {}) => ({
@@ -110,5 +110,34 @@ describe('openSessions', () => {
     expect(openSessions(2, end + 5, end).xetra).toBe(true);
     expect(openSessions(2, end + 6, end).xetra).toBe(false);
     expect(openSessions(6, 12 * 60, end)).toEqual({ xetra: false, us: false });
+  });
+});
+
+describe('eodhdFrom', () => {
+  const today = '2026-10-12';
+  const year = '2025-10-07';
+  it('loads the whole year for a symbol without history', () => {
+    expect(eodhdFrom([], today, year)).toBe(year);
+  });
+  it('starts at the oldest provisional (Yahoo) day of the last week', () => {
+    expect(
+      eodhdFrom(
+        [
+          { day: '2026-10-08', source: 'eodhd' },
+          { day: '2026-10-09', source: 'yahoo' },
+          { day: '2026-10-12', source: 'yahoo' },
+        ],
+        today,
+        year,
+      ),
+    ).toBe('2026-10-09');
+  });
+  it('does nothing when the recent days all come from EODHD or are old', () => {
+    expect(eodhdFrom([{ day: '2026-10-09', source: 'eodhd' }], today, year)).toBeNull();
+    expect(eodhdFrom([{ day: '2026-09-01', source: 'yahoo' }], today, year)).toBeNull();
+  });
+  it('shifts days across month ends', () => {
+    expect(addDays('2026-10-02', -3)).toBe('2026-09-29');
+    expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
   });
 });
