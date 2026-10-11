@@ -3,6 +3,7 @@ import { daysBetween, hhmm, parts } from './berlin.ts';
 import { headlineDrivers, importantItems, inDays, rankNews, type NewsInput } from './briefing.ts';
 import { gdeltQuery, matchTopics, topicIndex, topTopics } from './newsTopics.ts';
 import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
+import { indexMoves, parseWrap } from './wrap.ts';
 
 describe('RSS', () => {
   it('reads RSS 2.0 with CDATA, entities and HTML teasers', () => {
@@ -108,5 +109,49 @@ describe('briefing', () => {
     expect(hhmm(new Date('2026-10-12T12:30:00Z'))).toBe('14:30');
     expect(hhmm(new Date('2026-12-02T12:30:00Z'))).toBe('13:30');
     expect(parts(new Date('2026-10-25T00:30:00Z')).hour).toBe(2);
+  });
+});
+
+describe('market wrap', () => {
+  const news = [
+    { id: 1, title: 'A', url: 'https://a.example/1', source: 'Quelle A', importance: 3, summary: null, positions: 0, publishedAt: '2026-10-12T05:00:00Z', official: false },
+    { id: 2, title: 'B', url: 'https://b.example/2', source: 'Quelle B', importance: 4, summary: null, positions: 1, publishedAt: '2026-10-12T05:30:00Z', official: false },
+  ];
+  it('computes the latest close and the change to the close before', () => {
+    const moves = indexMoves(
+      [
+        { symbol: '^GDAXI', day: '2026-10-09', close: 100 },
+        { symbol: '^GDAXI', day: '2026-10-08', close: 98 },
+        { symbol: '^GSPC', day: '2026-10-09', close: 50 },
+      ],
+      { '^GDAXI': 'DAX', '^GSPC': 'S&P 500', '^NDX': 'Nasdaq 100' },
+    );
+    expect(moves).toHaveLength(2);
+    expect(moves[0]).toMatchObject({ name: 'DAX', day: '2026-10-09', close: 100 });
+    expect(moves[0].changePct).toBeCloseTo(2.0408, 3);
+    expect(moves[1].changePct).toBeNull();
+  });
+  it('resolves source ids to links and drops unknown ones and empty sections', () => {
+    const wrap = parseWrap(
+      {
+        headline: ' Märkte warten auf die Fed ',
+        sections: [
+          { title: 'Über Nacht', text: 'Text eins.', source_ids: [2, 2, 99, 1] },
+          { title: 'Leer', text: '  ', source_ids: [1] },
+        ],
+      },
+      news,
+    );
+    expect(wrap?.headline).toBe('Märkte warten auf die Fed');
+    expect(wrap?.sections).toHaveLength(1);
+    expect(wrap?.sections[0].sources).toEqual([
+      { name: 'Quelle B', url: 'https://b.example/2' },
+      { name: 'Quelle A', url: 'https://a.example/1' },
+    ]);
+  });
+  it('rejects unusable answers', () => {
+    expect(parseWrap(null, news)).toBeNull();
+    expect(parseWrap({ headline: '', sections: [] }, news)).toBeNull();
+    expect(parseWrap({ headline: 'x', sections: [{ title: '', text: 'y', source_ids: [] }] }, news)).toBeNull();
   });
 });

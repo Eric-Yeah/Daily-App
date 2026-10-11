@@ -68,6 +68,33 @@ export async function loadNews(sinceIso: string, limit = 200): Promise<Block<Liv
   );
 }
 
+export type WrapKind = 'morning' | 'afternoon' | 'evening';
+
+export interface LiveWrap {
+  kind: WrapKind;
+  day: string; // YYYY-MM-DD
+  createdAt: Date;
+  headline: string;
+  sections: { title: string; text: string; sources: { name: string; url: string }[] }[];
+}
+
+/**
+ * The AI market overview ("Marktüberblick") of a briefing: of the given kind today, or the newest one there is.
+ * Empty (and the card stays hidden) if none was written yet or the AI was unavailable.
+ */
+export async function loadWrap(now: Date, kind?: WrapKind): Promise<Block<LiveWrap>> {
+  let q = daily().from('briefings').select('kind,day,created_at,content').order('created_at', { ascending: false }).limit(kind ? 1 : 6);
+  if (kind) q = q.eq('kind', kind).eq('day', todayIso(now));
+  const { data, error } = await q;
+  if (error) return failed('Marktüberblick gerade nicht verfügbar.');
+  for (const row of (data ?? []) as { kind: WrapKind; day: string; created_at: string; content: { wrap?: { headline: string; sections: LiveWrap['sections'] } | null } }[]) {
+    const w = row.content?.wrap;
+    if (!w?.headline || !Array.isArray(w.sections) || !w.sections.length) continue;
+    return ok({ kind: row.kind, day: row.day, createdAt: new Date(row.created_at), headline: w.headline, sections: w.sections });
+  }
+  return empty('Noch kein Marktüberblick.');
+}
+
 /** Most relevant first: importance, number of positions, then recency. */
 export function rankLive(items: LiveNews[]): LiveNews[] {
   return [...items].sort(

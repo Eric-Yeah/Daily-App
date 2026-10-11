@@ -1,5 +1,6 @@
 // Builds the briefing content (pure). The AI sentences are added by the Edge Function.
 import { daysBetween, hhmm, isoDay, parts } from './berlin.ts';
+import type { MarketWrap } from './wrap.ts';
 
 export type BriefingKind = 'morning' | 'afternoon' | 'evening';
 
@@ -41,6 +42,8 @@ export interface BriefingContent {
   important: ImportantItem[];
   marketNow: { text: string; url: string; ai: boolean } | null;
   drivers: { items: string[]; sourcesUrl: string; ai: boolean } | null;
+  /** AI market overview (added later; absent in older briefings and when the AI was unavailable). */
+  wrap?: MarketWrap | null;
 }
 
 /** "in 3 Tagen", "morgen", "heute" */

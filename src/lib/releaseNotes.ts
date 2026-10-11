@@ -9,6 +9,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.0',
+    date: '2026-10-11',
+    title: 'Marktüberblick, Suche und mehr Filter',
+    notes: [
+      'Neu: der Marktüberblick. Zu Morgen, Mittag und Abend schreibt die KI einen kompakten Überblick über die Märkte, mit den letzten Indexständen, den wichtigsten Meldungen und den Terminen. Unter jedem Absatz stehen die Quellen zum Nachlesen.',
+      'Du findest ihn oben in der jeweiligen Tagesansicht und im Tab News (dort der neueste).',
+      'Im Tab News kannst du jetzt suchen und nach Märkten filtern: Deutschland, Europa, USA, Asien, Rohstoffe, Zinsen, Krypto, Tech & KI und Unternehmen.',
+      'Unter „Weitere Filter“: Zeitraum (6, 24 oder 48 Stunden), Sortierung, einzelne Quelle, „Nur Wichtiges“, „Nur Notenbanken“ und die Themen deiner Positionen.',
+      'Die Liste lädt jetzt in Schritten („Mehr anzeigen“).',
+    ],
+  },
+  {
     version: '0.2.1',
     date: '2026-10-11',
     title: 'Mehr Quellen und mehr Meldungen',

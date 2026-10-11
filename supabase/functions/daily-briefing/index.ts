@@ -6,7 +6,7 @@
 // Deploy: npx supabase functions deploy daily-briefing --no-verify-jwt --use-api --project-ref <ref>
 import { admin, adminPublic, isCron, json, CORS, ownerFromRequest, ownerId, ownerSettings } from '../_shared/admin.ts';
 import { askJson, RULES } from '../_shared/ai.ts';
-import { hhmmToMinutes, isoDay, minuteOfDay, parts } from '../_shared/berlin.ts';
+import { hhmm, hhmmToMinutes, isoDay, minuteOfDay, parts } from '../_shared/berlin.ts';
 import {
   DEFAULT_TIMES,
   PUSH_TEXT,
@@ -20,8 +20,11 @@ import {
   type NewsInput,
 } from '../_shared/briefing.ts';
 import { sendPush, vapidKeys } from '../_shared/push.ts';
+import { indexMoves, parseWrap, WRAP_SCHEMA, wrapSystem, wrapUser } from '../_shared/wrap.ts';
 
 const KINDS: BriefingKind[] = ['morning', 'afternoon', 'evening'];
+const INDEX_NAMES: Record<string, string> = { '^GDAXI': 'DAX', '^STOXX50E': 'Euro Stoxx 50', '^GSPC': 'S&P 500', '^NDX': 'Nasdaq 100' };
+const KIND_LABEL: Record<BriefingKind, string> = { morning: 'Morgen', afternoon: 'Mittag', evening: 'Abend' };
 const APP_URL = 'https://eric-yeah.github.io/Daily-App/#/heute';
 
 type Db = ReturnType<typeof admin>;
@@ -66,6 +69,33 @@ function aiInput(news: NewsInput[]): string {
     .join('\n');
 }
 
+/** The AI market overview. Null (and the app shows nothing) if there is no key, no budget or too little news. */
+async function makeWrap(db: Db, kind: BriefingKind, now: Date, budget: number, tz: string, news: NewsInput[], events: Record<string, unknown>[]) {
+  const pool = rankNews(news).slice(0, 30);
+  if (pool.length < 3) return null;
+  const from = new Date(now.getTime() - 10 * 86400_000).toISOString().slice(0, 10);
+  const { data: rows } = await db.from('price_daily').select('symbol, day, close').in('symbol', Object.keys(INDEX_NAMES)).gte('day', from);
+  const today = isoDay(parts(now, tz));
+  const upcoming = events
+    .map((e) => ({ at: new Date(e.starts_at as string), title: e.title as string }))
+    .filter((e) => e.at.getTime() >= now.getTime() - 3600_000 && e.at.getTime() < now.getTime() + 36 * 3600_000)
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    .map((e) => ({ title: e.title, time: `${isoDay(parts(e.at, tz)) === today ? 'heute' : 'morgen'} ${hhmm(e.at, tz)} Uhr` }));
+  const weekday = new Intl.DateTimeFormat('de-DE', { timeZone: tz, weekday: 'long' }).format(now);
+  const res = await askJson<unknown>(db, budget, {
+    system: wrapSystem(kind, RULES),
+    user: wrapUser({
+      dayLabel: `${weekday}, ${today}, ${KIND_LABEL[kind]}`,
+      indices: indexMoves((rows ?? []) as { symbol: string; day: string; close: number }[], INDEX_NAMES),
+      events: upcoming,
+      news: pool,
+    }),
+    maxTokens: 1800,
+    schema: WRAP_SCHEMA as unknown as Record<string, unknown>,
+  });
+  return res.ok ? parseWrap(res.data, pool) : null;
+}
+
 async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, budget: number, tz: string): Promise<BriefingContent> {
   const today = isoDay(parts(now, tz));
   const morningStart = new Date(now.getTime() - (minuteOfDay(parts(now, tz)) - 6 * 60) * 60_000); // 06:00 today
@@ -95,6 +125,7 @@ async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, b
   };
 
   const top = rankNews(news).slice(0, 8);
+  content.wrap = await makeWrap(db, kind, now, budget, tz, news, (events ?? []) as Record<string, unknown>[]);
   if (kind === 'afternoon' && top.length) {
     const res = await askJson<{ text: string; source_id: number }>(db, budget, {
       system: `Schreibe auf Deutsch 1 bis 2 kurze Sätze (höchstens 300 Zeichen): Was bewegt die Märkte heute gerade, laut den gelieferten Meldungen?

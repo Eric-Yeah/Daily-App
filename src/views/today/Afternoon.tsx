@@ -1,6 +1,7 @@
 import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { Header, useGreeting } from '../../components/Header';
+import { WrapCard } from '../../components/Wrap';
 import { Axis, ChangeTiles, DepotHeadline, ExternalLink, IndexStrip, IntradayChart, MissingNote } from '../../components/Market';
 import type { DataSource } from '../../data/types';
 import { formatDateLong, formatDuration, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
@@ -36,6 +37,8 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
       <ViewState view={view}>
+
+      <WrapCard kind="afternoon" />
 
       <BlockView block={data?.depot} title="Depot heute" skeletonHeight={260}>
         {(d) => {

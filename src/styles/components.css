@@ -80,7 +80,8 @@
   font-weight: 700;
   cursor: pointer;
 }
-.segmented button[aria-selected='true'] {
+.segmented button[aria-selected='true'],
+.segmented button[aria-pressed='true'] {
   background: var(--primary);
   color: var(--on-primary);
 }
@@ -1239,4 +1240,66 @@ a.button--secondary:hover {
   font-weight: 700;
   font-size: 14px;
   padding: 6px 0;
+}
+
+/* ---------- Market overview and news filters ---------- */
+.wrap__headline {
+  font-size: 18px;
+  line-height: 25px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.wrap__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wrap__section h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--link);
+}
+.wrap__section p {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-soft);
+}
+.wrap__section .wrap__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+.wrap__sources a {
+  font-weight: 700;
+}
+.wrap__note {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--muted);
+}
+.segmented--auto {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+}
+.segmented--auto button {
+  height: 40px;
+  font-size: 13px;
+}
+.chip__count {
+  color: var(--muted);
+  font-weight: 600;
+}
+.chip--active .chip__count {
+  color: inherit;
+  opacity: 0.8;
+}
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
 }

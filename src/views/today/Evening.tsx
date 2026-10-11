@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { CloseDayCard, NewsList } from '../../components/Content';
 import { Header, useGreeting } from '../../components/Header';
+import { WrapCard } from '../../components/Wrap';
 import { Axis, DepotHeadline, EventList, ExternalLink, GroupBars, IntradayChart, KpiTiles, MissingNote, NumberedCard, UsMiniChart } from '../../components/Market';
 import { empty, type DataSource } from '../../data/types';
 import { formatDateLong, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
@@ -24,6 +25,8 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
       <ViewState view={view}>
+
+      <WrapCard kind="evening" />
 
       <BlockView block={data?.balance} title="Tagesbilanz" skeletonHeight={360}>
         {(d) => (
