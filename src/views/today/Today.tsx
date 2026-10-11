@@ -1,9 +1,12 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { MockBanner } from '../../components/Header';
 import { ViewSwitcher } from '../../components/Segmented';
 import { useMarketLive } from '../../data/market';
 import { getDataSource } from '../../data/source';
 import { useNow } from '../../lib/clock';
+import { keepLastGood, type Snapshot } from '../../lib/lastgood';
+import { useOnline } from '../../lib/online';
 import { useSettings } from '../../lib/settings';
 import { pickView, type ViewKey } from '../../lib/time';
 import { Afternoon } from './Afternoon';
@@ -43,17 +46,76 @@ export function Today() {
   );
 }
 
-/** Loads a view's data; reloads when the source or the minute changes. */
-export function useViewData<T>(load: () => Promise<T>, deps: unknown[]): T | undefined {
-  const [data, setData] = useState<T>();
+export interface ViewData<T> {
+  data: T | undefined;
+  failed: boolean; // the load failed and there is nothing older to show
+  retry: () => void;
+}
+
+// Last good result per view, in memory: switching views shows it at once, a failed refresh falls back to it.
+const lastGood = new Map<string, Snapshot<object>>();
+
+/**
+ * Loads a view's data; reloads when the source or the minute changes, when the connection returns and when
+ * the app becomes visible again. A failed block is replaced by its last good version (marked stale).
+ */
+export function useViewData<T extends object>(key: string, load: () => Promise<T>, deps: unknown[]): ViewData<T> {
+  const [data, setData] = useState<T | undefined>(() => lastGood.get(key)?.data as T | undefined);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt((n) => n + 1);
+
+  useEffect(() => {
+    const onVisible = () => document.visibilityState === 'visible' && retry();
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', retry);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   useEffect(() => {
     let alive = true;
     load()
-      .then((d) => alive && setData(d))
-      .catch(() => alive && setData(undefined));
+      .then((d) => {
+        if (!alive) return;
+        const merged = keepLastGood(lastGood.get(key) as Snapshot<T> | undefined, d);
+        lastGood.set(key, { data: merged, at: new Date() });
+        setData(merged);
+        setFailed(false);
+      })
+      .catch(() => alive && setFailed(!lastGood.has(key)));
     return () => {
       alive = false;
     };
-  }, deps);
-  return data;
+  }, [...deps, attempt]);
+  return { data, failed, retry };
+}
+
+/** Offline hint and, if nothing could be loaded at all, an error card with a retry button. */
+export function ViewState<T>({ view, children }: { view: ViewData<T>; children: ComponentChildren }) {
+  const online = useOnline();
+  return (
+    <>
+      {!online && (
+        <div class="offline-banner" role="status">
+          Offline · du siehst den letzten Stand
+        </div>
+      )}
+      {view.failed ? (
+        <section class="card gap-12 block-state block-state--error" role="alert">
+          <p>Die Daten konnten nicht geladen werden.</p>
+          <button class="button button--secondary" type="button" onClick={view.retry}>
+            Erneut versuchen
+          </button>
+        </section>
+      ) : (
+        // aria-busy tells screen readers that the skeletons are placeholders while the first load runs
+        <div class="view-body" aria-busy={view.data === undefined}>
+          {children}
+        </div>
+      )}
+    </>
+  );
 }

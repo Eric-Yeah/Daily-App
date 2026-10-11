@@ -6,12 +6,13 @@ import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, MissingNote,
 import type { DataSource } from '../../data/types';
 import { formatDateLong, formatNumber, formatWeekday } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
-import { useViewData } from './Today';
+import { useViewData, ViewState } from './Today';
 
 export function Morning({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
   const { timeZone } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
-  const data = useViewData(() => source.morning(now), [source, minuteKey]);
+  const view = useViewData('morning', () => source.morning(now), [source, minuteKey]);
+  const data = view.data;
   const title = useGreeting('Guten Morgen');
   const weather = data?.weather.status === 'ok' ? data.weather.data : null;
 
@@ -23,6 +24,7 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
         pill={weather ? `${formatNumber(weather.tempC)}° · ${weather.text}` : undefined}
       />
       {switcher}
+      <ViewState view={view}>
 
       <BlockView block={data?.indices} skeletonHeight={60} hideWhenEmpty>
         {(items) => <IndexStrip items={items} />}
@@ -77,6 +79,7 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
       </BlockView>
 
       <TaskCard store={source.tasks} />
+      </ViewState>
     </>
   );
 }

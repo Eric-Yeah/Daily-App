@@ -72,6 +72,13 @@ export function formatPctArrow(value: number, decimals = 2): string {
   return `${a ? a + ' ' : ''}${formatPct(value, decimals)}`;
 }
 
+/** For screen readers: 0.42 → "plus 0,4 Prozent", −3.1 → "minus 3,1 Prozent". */
+export function spokenPct(value: number, decimals = 1): string {
+  const t = trend(value, decimals);
+  const sign = t === 'pos' ? 'plus ' : t === 'neg' ? 'minus ' : '';
+  return `${sign}${formatNumber(Math.abs(value), decimals, false)} Prozent`;
+}
+
 /** Placeholder for a missing number (never estimate). */
 export const MISSING = '—';
 

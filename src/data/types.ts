@@ -2,7 +2,7 @@
 // so one missing source never blanks the whole page.
 
 export type Block<T> =
-  | { status: 'ok'; data: T; asOf?: string }
+  | { status: 'ok'; data: T; asOf?: string; stale?: boolean } // stale: last good data, shown because the refresh failed
   | { status: 'empty'; message: string }
   | { status: 'error'; message: string };
 

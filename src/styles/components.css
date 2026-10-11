@@ -1154,3 +1154,22 @@ a.button--secondary:hover {
   border-color: var(--primary);
   color: var(--on-primary);
 }
+
+/* ---------- Offline and stale data ---------- */
+.offline-banner {
+  align-self: flex-start;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.stale-note {
+  margin: -8px 4px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.view-body {
+  display: contents;
+}

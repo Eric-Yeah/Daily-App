@@ -16,7 +16,7 @@ vi.mock('../lib/supabase', () => {
   return { daily: () => ({ from: (t: string) => builder(t) }), supabase: () => ({}) };
 });
 
-const { marketAfternoon, marketEvening, marketMorning } = await import('./market');
+const { invalidateMarket, marketAfternoon, marketEvening, marketMorning } = await import('./market');
 
 const at = (day: string, hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -46,7 +46,10 @@ function seed() {
   failTable = null;
 }
 
-beforeEach(seed);
+beforeEach(() => {
+  seed();
+  invalidateMarket();
+});
 const now = new Date(at('2026-10-12', '16:00'));
 
 describe('marketAfternoon', () => {

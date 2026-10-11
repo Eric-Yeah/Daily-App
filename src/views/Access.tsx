@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { Header } from '../components/Header';
-import { signIn, signOut, verifyPassword } from '../lib/auth';
+import { passkeysSupported, signIn, signInWithPasskey, signOut, verifyPassword } from '../lib/auth';
 import { lockErrorText, unlock, webAuthnLock } from '../lib/lock';
 
 export function LoginPage() {
@@ -19,11 +19,28 @@ export function LoginPage() {
     else unlock(); // the password was just entered, no need to ask for Face ID right after
   };
 
+  const withPasskey = async () => {
+    setBusy(true);
+    setError('');
+    const err = await signInWithPasskey();
+    setBusy(false);
+    if (err) setError(err);
+    else unlock(); // Face ID was just confirmed by the passkey itself
+  };
+
   return (
     <main class="page page--plain">
       <Header dateLine="Dein Tagesüberblick" title="Daily" />
       <form class="card gap-12" onSubmit={submit}>
         <h2>Anmelden</h2>
+        {passkeysSupported() && (
+          <>
+            <button class="button button--wide" type="button" onClick={withPasskey} disabled={busy}>
+              Mit Face ID anmelden
+            </button>
+            <p class="note">Geht, sobald du unter „Mehr → Sicherheit“ einen Passkey eingerichtet hast. Sonst melde dich mit dem Passwort an.</p>
+          </>
+        )}
         <p class="card-sub">Mit deinem Konto aus der Study App. Du bleibst danach angemeldet.</p>
         <label class="field">
           <span class="field__label">E-Mail</span>
@@ -53,8 +70,8 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <button class="button button--wide" type="submit" disabled={busy}>
-          {busy ? 'Anmelden …' : 'Anmelden'}
+        <button class={`button button--wide${passkeysSupported() ? ' button--secondary' : ''}`} type="submit" disabled={busy}>
+          {busy ? 'Anmelden …' : 'Mit Passwort anmelden'}
         </button>
         <p class="note">Passwort vergessen? Setz es in der Study App zurück, es ist dasselbe Konto.</p>
       </form>

@@ -9,12 +9,13 @@ import { useSettings } from '../../lib/settings';
 import { xetraStatus } from '../../lib/time';
 import { today } from '../../data/personal';
 import { marketPill } from './Afternoon';
-import { useViewData } from './Today';
+import { useViewData, ViewState } from './Today';
 
 export function Evening({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
   const { timeZone, tradingEnd } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
-  const data = useViewData(() => source.evening(now), [source, minuteKey]);
+  const view = useViewData('evening', () => source.evening(now), [source, minuteKey]);
+  const data = view.data;
   const title = useGreeting('Guten Abend');
   const status = xetraStatus(now, { tradingEnd });
 
@@ -22,6 +23,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
     <>
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
+      <ViewState view={view}>
 
       <BlockView block={data?.balance} title="Tagesbilanz" skeletonHeight={360}>
         {(d) => (
@@ -64,7 +66,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
                   <span>{i.name}</span>
                   <span class={`group__change ${trend(i.changePct, 1)}`}>{formatPct(i.changePct, 1)}</span>
                 </div>
-                <UsMiniChart points={i.points} prevClose={i.prevClose} start={u.sessionStart} end={u.sessionEnd} changePct={i.changePct} />
+                <UsMiniChart name={i.name} points={i.points} prevClose={i.prevClose} start={u.sessionStart} end={u.sessionEnd} changePct={i.changePct} />
               </div>
             ))}
             <Axis labels={[u.sessionStart, '18:00', '20:00', u.sessionEnd]} />
@@ -84,6 +86,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
       </BlockView>
 
       <CloseDayCard store={source.tasks} notes={source.notes} day={today(now)} training={data?.trainingDone ?? empty('')} />
+      </ViewState>
     </>
   );
 }

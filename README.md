@@ -18,7 +18,7 @@ Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** un
 | M5 | News und KI (Claude Haiku 5.5) | **fertig** (KI-Schlüssel trägst du selbst ein) |
 | M6 | Briefings vorab + Push | **fertig** |
 | M7 | Overload und Study App | **fertig** (Training ohne Plan) |
-| M8 | Feinschliff, Passkey-Login | offen |
+| M8 | Feinschliff, Passkey-Login | **fertig** (Passkey einmal im Dashboard einschalten, Supabase-Beta) |
 
 Beispieldaten gibt es nur noch, solange du **keine Positionen** angelegt hast. Dann steht oben „Beispieldaten · keine echten Kurse“; unter **Mehr → Beispieldaten anzeigen** schaltest du sie aus. Sobald Positionen da sind, ist alles echt: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Kurse, Indizes und US-Markt, Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App. Das Wetter fehlt noch.
 
@@ -94,7 +94,29 @@ Neue Migrationen kommen später genauso als nummerierte Dateien in `supabase/mig
 2. *Mehr* → *Sicherheit* → **Einrichten** → Face ID bestätigen.
 3. Ab jetzt fragt Daily beim Öffnen und nach einer Pause (einstellbar, Standard 5 Minuten) nach Face ID. Ohne Face ID geht es mit „Stattdessen mit Passwort“.
 
-**Ehrlicher Hinweis:** Die Face-ID-Sperre ist eine Schutzschicht gegen fremde Hände am entsperrten Handy. Sie läuft auf dem Gerät. Der eigentliche Schutz deiner Daten sind die Anmeldung und die Row Level Security in der Datenbank. Später (M8) prüfe ich Passkeys als echte Anmeldung; Supabase bietet sie seit 2026 als Beta.
+**Ehrlicher Hinweis:** Die Face-ID-Sperre ist eine Schutzschicht gegen fremde Hände am entsperrten Handy. Sie läuft auf dem Gerät. Der eigentliche Schutz deiner Daten sind die Anmeldung und die Row Level Security in der Datenbank. Eine echte Anmeldung per Face ID gibt es als Passkey, siehe nächster Abschnitt.
+
+## Passkey-Login (ab M8)
+
+Ein **Passkey** ersetzt das Passwort durch Face ID: Dein iPhone beweist deine Identität, Supabase prüft die Signatur und meldet dich an. Anders als die lokale App-Sperre ist das eine echte Anmeldung. Das Passwort bleibt als Rückfall bestehen.
+
+**Ehrlich:** Supabase bietet Passkeys seit Ende Mai 2026 als **Beta** an, die Schnittstelle kann sich ändern. Fällt etwas aus, funktioniert weiter die Anmeldung mit Passwort.
+
+**Einmalig einschalten (du klickst):**
+1. Supabase → Projekt der Study App → *Authentication* → *Passkeys* → einschalten.
+2. Dort eintragen: **RP ID** `eric-yeah.github.io` (ohne `https://`), **Origin** `https://eric-yeah.github.io`. Das gilt für das ganze Projekt, an der Study App ändert sich nichts. Die RP ID danach **nie mehr ändern**, sonst werden alle Passkeys ungültig.
+3. Die *Site URL* des Projekts nicht anfassen.
+4. In Daily anmelden (Passwort) → *Mehr* → *Sicherheit* → **Anmeldung mit Face ID (Passkey) → Hinzufügen** → Face ID bestätigen.
+5. Zum Testen abmelden und auf dem Anmeldebildschirm **Mit Face ID anmelden** tippen. Danach prüfen, dass die Anmeldung mit Passwort weiter geht.
+
+Zugriff hat auch mit Passkey nur das Konto in `daily.owner`. Entfernen kannst du Passkeys unter *Mehr → Sicherheit*.
+
+## Offline und Fehler (M8)
+
+- Ohne Internet zeigt Daily oben „Offline · du siehst den letzten Stand“. Einzelne Blöcke, die gerade nicht laden, zeigen ihre letzten Daten mit „Stand: HH:MM · gerade nicht aktuell“.
+- Der letzte Stand liegt **nur im Arbeitsspeicher** und wird nicht auf dem Gerät gespeichert, weil alle Apps unter `eric-yeah.github.io` einen gemeinsamen Browserspeicher teilen und Depotwerte dort nicht liegen sollen. Schließt du die App und bist offline, siehst du deshalb Hinweise statt alter Zahlen.
+- Beim Wiederkommen des Internets und beim Zurückkehren in die App lädt Daily automatisch neu.
+- Diagramme, Prozentwerte und Tabs haben Beschreibungen für Screenreader (VoiceOver); die Tagesansicht lässt sich mit Pfeiltasten umschalten.
 
 ## Depot (ab M3)
 

@@ -100,6 +100,71 @@ export async function signIn(email: string, password: string): Promise<string | 
   return error ? loginErrorText(error.message) : null;
 }
 
+// ---------- Passkey login (Supabase passkeys, beta) ----------
+// A passkey is a real credential held by Supabase: the phone proves with Face ID, Supabase checks the
+// signature and issues the session. The password stays as the fallback. The passkey is bound to this
+// site's address (eric-yeah.github.io), see the README.
+
+export interface PasskeyInfo {
+  id: string;
+  name: string;
+  createdAt: Date;
+}
+
+export function passkeysSupported(): boolean {
+  return typeof window !== 'undefined' && 'PublicKeyCredential' in window;
+}
+
+/** German text for a failed passkey step. */
+export function passkeyErrorText(error: { name?: string; message?: string; status?: number } | null | undefined): string {
+  const msg = error?.message ?? '';
+  if (error?.name === 'NotAllowedError' || /not allowed|cancel|abort|timed out/i.test(msg)) return 'Abgebrochen. Du kannst es nochmal versuchen oder das Passwort nutzen.';
+  if (/not enabled|disabled|not supported|404|not found/i.test(msg) || error?.status === 404) {
+    return 'Passkeys sind im Supabase-Projekt noch nicht eingeschaltet (siehe README).';
+  }
+  if (/fetch|network/i.test(msg)) return 'Keine Verbindung. Prüfe dein Internet.';
+  if (/no.*(credential|passkey)|unknown credential/i.test(msg)) return 'Für dieses Gerät ist noch kein Passkey eingerichtet. Melde dich mit dem Passwort an und richte ihn unter „Mehr → Sicherheit“ ein.';
+  return 'Passkey gerade nicht möglich. Nutze das Passwort.';
+}
+
+export async function signInWithPasskey(): Promise<string | null> {
+  try {
+    const { error } = await supabase().auth.signInWithPasskey();
+    return error ? passkeyErrorText(error) : null;
+  } catch (e) {
+    return passkeyErrorText(e as Error);
+  }
+}
+
+/** Registers a passkey for the signed-in account (asks for Face ID). */
+export async function registerPasskey(): Promise<string | null> {
+  try {
+    const { error } = await supabase().auth.registerPasskey();
+    return error ? passkeyErrorText(error) : null;
+  } catch (e) {
+    return passkeyErrorText(e as Error);
+  }
+}
+
+export async function listPasskeys(): Promise<PasskeyInfo[] | null> {
+  try {
+    const { data, error } = await supabase().auth.passkey.list();
+    if (error || !data) return null;
+    return data.map((p) => ({ id: p.id, name: p.friendly_name || 'Passkey', createdAt: new Date(p.created_at) }));
+  } catch {
+    return null;
+  }
+}
+
+export async function deletePasskey(id: string): Promise<string | null> {
+  try {
+    const { error } = await supabase().auth.passkey.delete({ passkeyId: id });
+    return error ? passkeyErrorText(error) : null;
+  } catch (e) {
+    return passkeyErrorText(e as Error);
+  }
+}
+
 /** Checks the password of the signed-in user again (fallback for the app lock). */
 export async function verifyPassword(password: string): Promise<string | null> {
   const email = currentSession()?.user.email;

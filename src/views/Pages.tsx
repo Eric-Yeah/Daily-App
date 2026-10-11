@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Header } from '../components/Header';
-import { formatPct } from '../lib/format';
-import { currentSession, signOut, useAuth } from '../lib/auth';
+import { formatDateLong, formatPct } from '../lib/format';
+import { currentSession, deletePasskey, listPasskeys, passkeysSupported, registerPasskey, signOut, useAuth, type PasskeyInfo } from '../lib/auth';
 import { disableLock, lockEnabled, lockErrorText, webAuthnLock } from '../lib/lock';
 import { aiSpentThisMonth, disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 import { isClockPinned } from '../lib/clock';
@@ -119,10 +119,32 @@ function SecuritySection() {
   const [enabled, setEnabled] = useState(lockEnabled());
   const [available, setAvailable] = useState<boolean | null>(null);
   const [message, setMessage] = useState('');
+  const [passkeys, setPasskeys] = useState<PasskeyInfo[] | null>(null);
+  const [passkeyMessage, setPasskeyMessage] = useState('');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     webAuthnLock.available().then(setAvailable);
+    if (passkeysSupported()) void listPasskeys().then(setPasskeys);
   }, []);
+
+  const addPasskey = async () => {
+    setBusy(true);
+    setPasskeyMessage('');
+    const err = await registerPasskey();
+    setBusy(false);
+    if (err) return setPasskeyMessage(err);
+    setPasskeyMessage('Passkey eingerichtet. Beim nächsten Anmelden reicht Face ID.');
+    setPasskeys(await listPasskeys());
+  };
+
+  const removePasskey = async (p: PasskeyInfo) => {
+    if (!confirm('Diesen Passkey entfernen? Die Anmeldung mit Passwort bleibt möglich.')) return;
+    const err = await deletePasskey(p.id);
+    if (err) return setPasskeyMessage(err);
+    setPasskeyMessage('Passkey entfernt.');
+    setPasskeys(await listPasskeys());
+  };
 
   if (auth.status !== 'ready') return null;
 
@@ -189,6 +211,39 @@ function SecuritySection() {
           <p class="setting__hint" role="status">
             {message}
           </p>
+        )}
+        {passkeysSupported() && (
+          <>
+            <div class="setting">
+              <span>
+                Anmeldung mit Face ID (Passkey)
+                <span class="setting__hint">Statt Passwort. Das Passwort bleibt als Rückfall. Noch im Test bei Supabase.</span>
+              </span>
+              <button class="button" type="button" onClick={addPasskey} disabled={busy}>
+                Hinzufügen
+              </button>
+            </div>
+            {passkeys && passkeys.length > 0 && (
+              <ul class="plain-list">
+                {passkeys.map((p) => (
+                  <li key={p.id} class="setting">
+                    <span>
+                      {p.name}
+                      <span class="setting__hint">eingerichtet am {formatDateLong(p.createdAt, s.timeZone)}</span>
+                    </span>
+                    <button class="button button--secondary" type="button" onClick={() => void removePasskey(p)}>
+                      Entfernen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {passkeyMessage && (
+              <p class="setting__hint" role="status">
+                {passkeyMessage}
+              </p>
+            )}
+          </>
         )}
       </section>
 

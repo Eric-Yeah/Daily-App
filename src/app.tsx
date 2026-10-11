@@ -1,4 +1,5 @@
 import { useEffect } from 'preact/hooks';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { TabBar } from './components/TabBar';
 import { useAuth } from './lib/auth';
 import { useLock } from './lib/lock';
@@ -28,10 +29,12 @@ export function App() {
 
   return (
     <div class="app">
-      {route === 'heute' && <Today />}
-      {route === 'depot' && <DepotTab />}
-      {route === 'news' && <NewsTab />}
-      {route === 'mehr' && <MorePage />}
+      <ErrorBoundary resetKey={route}>
+        {route === 'heute' && <Today />}
+        {route === 'depot' && <DepotTab />}
+        {route === 'news' && <NewsTab />}
+        {route === 'mehr' && <MorePage />}
+      </ErrorBoundary>
       <TabBar current={route} />
     </div>
   );

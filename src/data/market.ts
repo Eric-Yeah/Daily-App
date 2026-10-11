@@ -111,6 +111,25 @@ async function load(now: Date): Promise<Bundle | null | 'error'> {
   };
 }
 
+// The tables change every 30 minutes at most, the views reload every minute: reuse one read for 5 minutes.
+let cache: { key: number; at: number; value: ReturnType<typeof load> } | null = null;
+
+/** Forget the cached read (e.g. after the depot changed). */
+export function invalidateMarket() {
+  cache = null;
+}
+
+function loadCached(now: Date): ReturnType<typeof load> {
+  const key = Math.floor(now.getTime() / 300_000);
+  if (cache && cache.key === key && Date.now() - cache.at < 300_000) return cache.value;
+  const value = load(now);
+  cache = { key, at: Date.now(), value };
+  void value.then((v) => {
+    if (v === 'error' && cache?.value === value) cache = null; // retry the next minute
+  });
+  return value;
+}
+
 const dateOf = (isoDay: string) => new Date(`${isoDay}T12:00:00Z`);
 
 interface Computed {
@@ -194,7 +213,7 @@ const allFailed = <T extends object>(keys: (keyof T)[]): Partial<T> => {
 };
 
 export async function marketMorning(now: Date): Promise<Partial<MorningData>> {
-  const b = await load(now);
+  const b = await loadCached(now);
   if (b === null) return {};
   const noWeather: Pick<MorningData, 'weather'> = { weather: empty('Das Wetter folgt in einer späteren Version.') };
   if (b === 'error') return { ...noWeather, ...allFailed<MorningData>(['indices', 'depot', 'kpis', 'alert']) };
@@ -227,7 +246,7 @@ export async function marketMorning(now: Date): Promise<Partial<MorningData>> {
 }
 
 export async function marketAfternoon(now: Date): Promise<Partial<AfternoonData>> {
-  const b = await load(now);
+  const b = await loadCached(now);
   if (b === null) return {};
   if (b === 'error') return allFailed<AfternoonData>(['depot', 'indices', 'groups', 'usStart', 'morningEvents']);
   const c = compute(b, now);
@@ -261,7 +280,7 @@ export async function marketAfternoon(now: Date): Promise<Partial<AfternoonData>
 }
 
 export async function marketEvening(now: Date): Promise<Partial<EveningData>> {
-  const b = await load(now);
+  const b = await loadCached(now);
   if (b === null) return {};
   if (b === 'error') return allFailed<EveningData>(['balance', 'us', 'periods']);
   const c = compute(b, now);

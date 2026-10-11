@@ -1,5 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import type { Block } from '../data/types';
+import { formatTime } from '../lib/format';
+import { getSettings } from '../lib/settings';
 
 /** Renders a data block: skeleton while loading, honest empty/error card, or the content. */
 export function BlockView<T>({
@@ -16,9 +18,25 @@ export function BlockView<T>({
   children: (data: T) => ComponentChildren;
 }) {
   if (!block) return <SkeletonCard height={skeletonHeight} />;
-  if (block.status === 'ok') return <>{children(block.data)}</>;
+  if (block.status === 'ok') {
+    return (
+      <>
+        {children(block.data)}
+        {block.stale && block.asOf && <StaleNote asOf={block.asOf} />}
+      </>
+    );
+  }
   if (block.status === 'empty' && hideWhenEmpty) return null;
   return <StateCard title={title} message={block.message} error={block.status === 'error'} />;
+}
+
+/** Shown under data that could not be refreshed: when it was last up to date. */
+export function StaleNote({ asOf }: { asOf: string }) {
+  return (
+    <p class="stale-note" role="status">
+      Stand: {formatTime(new Date(asOf), getSettings().timeZone)} · gerade nicht aktuell
+    </p>
+  );
 }
 
 export function StateCard({ title, message, error }: { title?: string; message: string; error?: boolean }) {

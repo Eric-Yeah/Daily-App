@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { currentSession } from '../lib/auth';
 import type { ImportItem } from '../lib/csv';
 import { daily } from '../lib/supabase';
+import { invalidateMarket } from './market';
 import { failed, ok, type Block } from './types';
 
 export interface Group {
@@ -98,7 +99,10 @@ function errorText(message: string): string {
 
 function createSupabaseDepot(): DepotStore {
   const listeners = new Set<() => void>();
-  const emit = () => listeners.forEach((l) => l());
+  const emit = () => {
+    invalidateMarket();
+    listeners.forEach((l) => l());
+  };
   const done = (error: { message: string } | null) => {
     if (!error) emit();
     return error ? errorText(error.message) : null;

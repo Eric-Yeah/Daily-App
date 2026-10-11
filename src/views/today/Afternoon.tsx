@@ -6,7 +6,7 @@ import type { DataSource } from '../../data/types';
 import { formatDateLong, formatDuration, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { lastClosedTradingDay, minutesUntil, usSessionInZone, xetraStatus, type MarketStatus } from '../../lib/time';
-import { useViewData } from './Today';
+import { useViewData, ViewState } from './Today';
 
 export function marketPill(status: MarketStatus): string {
   switch (status) {
@@ -24,7 +24,8 @@ export function marketPill(status: MarketStatus): string {
 export function Afternoon({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
   const { timeZone, tradingEnd } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
-  const data = useViewData(() => source.afternoon(now), [source, minuteKey]);
+  const view = useViewData('afternoon', () => source.afternoon(now), [source, minuteKey]);
+  const data = view.data;
   const title = useGreeting('Guten Nachmittag', false);
   const status = xetraStatus(now, { tradingEnd });
   const us = usSessionInZone(now, timeZone);
@@ -34,6 +35,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
     <>
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
+      <ViewState view={view}>
 
       <BlockView block={data?.depot} title="Depot heute" skeletonHeight={260}>
         {(d) => {
@@ -124,6 +126,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
           </section>
         )}
       </BlockView>
+      </ViewState>
     </>
   );
 }

@@ -1,8 +1,26 @@
 import type { ComponentChildren } from 'preact';
 import type { DepotSummary, GroupMove, IndexQuote, IntradaySeries, Kpi, MarketEvent, SeriesPoint } from '../data/types';
 import { sessionChart, sparkline } from '../lib/chart';
-import { formatEuro, formatPct, formatPctArrow, MISSING, trend } from '../lib/format';
+import { formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
 import { useSettings } from '../lib/settings';
+
+/** A percent change: shown with sign (and arrow), read out as words, so the direction is not only a colour. */
+function Pct({ value, decimals = 1, withArrow = false }: { value: number | null; decimals?: number; withArrow?: boolean }) {
+  if (value === null) {
+    return (
+      <>
+        <span aria-hidden="true">{MISSING}</span>
+        <span class="visually-hidden">kein Kurs</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <span aria-hidden="true">{withArrow ? formatPctArrow(value, decimals) : formatPct(value, decimals)}</span>
+      <span class="visually-hidden">{spokenPct(value, decimals)}</span>
+    </>
+  );
+}
 
 const trendClass = (v: number | null, decimals = 1) => (v === null ? 'flat' : trend(v, decimals));
 
@@ -13,7 +31,7 @@ export function IndexStrip({ items }: { items: IndexQuote[] }) {
         <li key={i.name} class="index-tile">
           <span class="index-tile__name">{i.name}</span>
           <span class={`index-tile__change ${trendClass(i.changePct)}`}>
-            {i.changePct === null ? MISSING : formatPct(i.changePct, 1)}
+            <Pct value={i.changePct} />
           </span>
         </li>
       ))}
@@ -29,7 +47,9 @@ export function DepotHeadline({ summary, comparedTo }: { summary: DepotSummary; 
     <>
       <div class="depot-row">
         <div class="depot-value">{formatEuro(summary.value, { hidden: hideAmounts })}</div>
-        <div class={`change-pill ${t}`}>{formatPctArrow(summary.changePct, 2)}</div>
+        <div class={`change-pill ${t}`}>
+          <Pct value={summary.changePct} decimals={2} withArrow />
+        </div>
       </div>
       <div class="depot-sub">
         {formatEuro(summary.changeAbs, { signed: true, hidden: hideAmounts })} gegenüber {comparedTo}
@@ -40,8 +60,14 @@ export function DepotHeadline({ summary, comparedTo }: { summary: DepotSummary; 
 
 export function Sparkline({ values }: { values: number[] }) {
   const p = sparkline(values);
+  const first = values[0];
+  const last = values.at(-1);
+  const label =
+    values.length > 1 && first > 0 && last !== undefined
+      ? `Verlauf der letzten ${values.length} Schlusskurse: ${spokenPct(((last - first) / first) * 100)} seit dem ersten`
+      : 'Verlauf der Schlusskurse';
   return (
-    <svg class="chart" viewBox="0 0 320 64" height="64" preserveAspectRatio="none" aria-hidden="true">
+    <svg class="chart" viewBox="0 0 320 64" height="64" preserveAspectRatio="none" role="img" aria-label={label}>
       <path d={p.area} fill="#8DB8FF" fill-opacity="0.14" />
       <path
         d={p.line}
@@ -59,8 +85,12 @@ export function Sparkline({ values }: { values: number[] }) {
 /** Depot intraday curve: dashed previous close, filled area, marker, dotted remainder. */
 export function IntradayChart({ series }: { series: IntradaySeries }) {
   const c = sessionChart(series.points, series.prevClose, { start: series.sessionStart, end: series.sessionEnd }, { height: 110, top: 22, bottom: 70 });
+  const last = series.points.at(-1);
+  const label = last
+    ? `Tageskurve des Depots: aktuell ${spokenPct(((last.value - series.prevClose) / series.prevClose) * 100, 2)} gegenüber dem Vortagsschluss`
+    : 'Tageskurve des Depots';
   return (
-    <svg class="chart" viewBox="0 0 320 110" height="110" aria-hidden="true">
+    <svg class="chart" viewBox="0 0 320 110" height="110" role="img" aria-label={label}>
       <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
       {c.end && (
         <>
@@ -77,7 +107,8 @@ export function IntradayChart({ series }: { series: IntradaySeries }) {
 }
 
 /** Small per-index curve for the US session (evening view). */
-export function UsMiniChart({ points, prevClose, start, end, changePct }: {
+export function UsMiniChart({ points, prevClose, start, end, changePct, name }: {
+  name?: string;
   points: SeriesPoint[];
   prevClose: number;
   start: string;
@@ -87,7 +118,7 @@ export function UsMiniChart({ points, prevClose, start, end, changePct }: {
   const c = sessionChart(points, prevClose, { start, end }, { height: 44, top: 8, bottom: 38 });
   const color = trend(changePct, 1) === 'neg' ? '#FF9C93' : trend(changePct, 1) === 'pos' ? '#6FDCAA' : '#A9B8C9';
   return (
-    <svg class="chart" viewBox="0 0 320 44" height="44" aria-hidden="true">
+    <svg class="chart" viewBox="0 0 320 44" height="44" role="img" aria-label={`Tageskurve${name ? ` ${name}` : ''}: ${spokenPct(changePct, 1)}`}>
       <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
       {c.end && (
         <>
@@ -122,7 +153,9 @@ export function GroupBars({ groups }: { groups: GroupMove[] }) {
               <span>
                 {g.name} <span class="group__share">· {Math.round(g.sharePct)} %</span>
               </span>
-              <span class={`group__change ${t}`}>{formatPct(g.changePct, 1)}</span>
+              <span class={`group__change ${t}`}>
+                <Pct value={g.changePct} />
+              </span>
             </div>
             <div class="bar" aria-hidden="true">
               <div class={`bar__fill ${t}`} style={{ width: `${Math.min(100, Math.max(0, g.sharePct))}%` }} />
@@ -140,7 +173,9 @@ export function ChangeTiles({ items, mutedNames = false }: { items: { name: stri
       {items.map((g) => (
         <li key={g.name} class="tile">
           <span class={`tile__name${mutedNames ? ' tile__name--muted' : ''}`}>{g.name}</span>
-          <span class={`tile__value ${trendClass(g.changePct)}`}>{g.changePct === null ? MISSING : formatPct(g.changePct, 1)}</span>
+          <span class={`tile__value ${trendClass(g.changePct)}`}>
+            <Pct value={g.changePct} />
+          </span>
         </li>
       ))}
     </ul>
@@ -154,7 +189,9 @@ export function KpiTiles({ items, columns = 2 }: { items: (Kpi & { abs?: number 
       {items.map((k) => (
         <div key={k.label} class="kpi">
           <span class="kpi__label">{k.label}</span>
-          <span class={`kpi__value ${trend(k.pct, 1)}`}>{formatPct(k.pct, 1)}</span>
+          <span class={`kpi__value ${trend(k.pct, 1)}`}>
+            <Pct value={k.pct} />
+          </span>
           <span class="kpi__sub">{k.abs !== undefined ? formatEuro(k.abs, { signed: true, hidden: hideAmounts }) : k.sub}</span>
         </div>
       ))}
