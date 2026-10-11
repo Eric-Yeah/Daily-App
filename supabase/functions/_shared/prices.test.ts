@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dailyCloses, eodhdFrom, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickListing, toEodhdSymbol } from './prices.ts';
+import { addDays, dailyCloses, eodhdFrom, eodhdSymbolOf, parseEodhdSearch, pickEodhdListing, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickListing, toEodhdSymbol } from './prices.ts';
 
 // Invented example data; no real positions.
 const chart = (extra: object = {}) => ({
@@ -73,8 +73,9 @@ describe('symbol lookup', () => {
     expect(pickListing([])).toBeNull();
     expect(pickListing([{ symbol: 'EURUSD=X', exchange: null, name: null, type: 'CURRENCY' }])).toBeNull();
   });
-  it('maps Xetra symbols to EODHD only', () => {
+  it('maps euro exchanges to EODHD', () => {
     expect(toEodhdSymbol('TEST.DE')).toBe('TEST.XETRA');
+    expect(toEodhdSymbol('TEST.MI')).toBe('TEST.MI');
     expect(toEodhdSymbol('TEST.L')).toBeNull();
     expect(toEodhdSymbol('^GSPC')).toBeNull();
   });
@@ -139,5 +140,30 @@ describe('eodhdFrom', () => {
   it('shifts days across month ends', () => {
     expect(addDays('2026-10-02', -3)).toBe('2026-09-29');
     expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
+  });
+});
+
+describe('EODHD listing search', () => {
+  const hits = parseEodhdSearch([
+    { Code: 'AAA', Exchange: 'PA', Currency: 'EUR', Type: 'ETF' },
+    { Code: 'BBB', Exchange: 'XETRA', Currency: 'EUR', Type: 'ETF' },
+    { Code: 'BBB', Exchange: 'LSE', Currency: 'USD', Type: 'ETF' },
+    { Code: 'BBB', Exchange: 'F', Currency: 'EUR', Type: 'ETF' },
+    { nope: true },
+  ]);
+  it('parses listings and ignores broken rows', () => expect(hits).toHaveLength(4));
+  it('prefers the Xetra euro listing and derives the Yahoo symbol', () => {
+    expect(pickEodhdListing(hits)).toEqual({ ticker: 'BBB', exchange: 'XETRA', yahooSymbol: 'BBB.DE' });
+  });
+  it('falls back to other euro exchanges and skips non-euro listings', () => {
+    expect(pickEodhdListing(hits.filter((h) => h.exchange !== 'XETRA'))).toEqual({ ticker: 'AAA', exchange: 'PA', yahooSymbol: 'AAA.PA' });
+    expect(pickEodhdListing(hits.filter((h) => h.exchange === 'LSE'))).toBeNull();
+    expect(parseEodhdSearch({ error: 'x' })).toEqual([]);
+  });
+  it('uses the stored EODHD listing before deriving from the Yahoo symbol', () => {
+    expect(eodhdSymbolOf({ ticker: 'BBB', exchange: 'XETRA', provider_symbol: 'OTHER.MI' })).toBe('BBB.XETRA');
+    expect(eodhdSymbolOf({ ticker: null, exchange: null, provider_symbol: 'AAA.PA' })).toBe('AAA.PA');
+    expect(eodhdSymbolOf({ ticker: 'X', exchange: 'MIL', provider_symbol: 'X.MI' })).toBe('X.MI');
+    expect(eodhdSymbolOf({ ticker: null, exchange: null, provider_symbol: null })).toBeNull();
   });
 });

@@ -118,9 +118,62 @@ export function pickListing(hits: SearchHit[]): SearchHit | null {
   return funds.find((h) => h.symbol.endsWith('.DE')) ?? funds[0] ?? null;
 }
 
-/** Yahoo's Xetra suffix `.DE` is `.XETRA` at EODHD; other symbols are not supported there. */
+// Yahoo exchange suffix → EODHD exchange code (euro-denominated listings only).
+const EODHD_EXCHANGE: Record<string, string> = { DE: 'XETRA', MI: 'MI', PA: 'PA', AS: 'AS' };
+
+/** Yahoo symbol (`ABC.DE`) → EODHD symbol (`ABC.XETRA`); null for exchanges not mapped (and for indices). */
 export function toEodhdSymbol(yahooSymbol: string): string | null {
-  return yahooSymbol.endsWith('.DE') ? `${yahooSymbol.slice(0, -3)}.XETRA` : null;
+  const dot = yahooSymbol.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const code = EODHD_EXCHANGE[yahooSymbol.slice(dot + 1)];
+  return code ? `${yahooSymbol.slice(0, dot)}.${code}` : null;
+}
+
+// EODHD exchange code → Yahoo suffix, in order of preference (Xetra first, like the broker).
+const LISTING_ORDER = ['XETRA', 'MI', 'PA', 'AS'] as const;
+const YAHOO_SUFFIX: Record<string, string> = { XETRA: 'DE', MI: 'MI', PA: 'PA', AS: 'AS' };
+
+export interface EodhdListing {
+  code: string;
+  exchange: string;
+  currency: string | null;
+  type: string | null;
+}
+
+export const eodhdSearchUrl = (query: string, key: string) =>
+  `https://eodhd.com/api/search/${encodeURIComponent(query)}?api_token=${encodeURIComponent(key)}&limit=15&fmt=json`;
+
+/** EODHD search response (by ISIN): [{ Code, Exchange, Currency, Type }, …]. */
+export function parseEodhdSearch(raw: unknown): EodhdListing[] {
+  if (!Array.isArray(raw)) return [];
+  const out: EodhdListing[] = [];
+  for (const r of raw as Record<string, unknown>[]) {
+    if (typeof r?.Code === 'string' && typeof r.Exchange === 'string') {
+      out.push({ code: r.Code, exchange: r.Exchange, currency: typeof r.Currency === 'string' ? r.Currency : null, type: typeof r.Type === 'string' ? r.Type : null });
+    }
+  }
+  return out;
+}
+
+export interface Resolved {
+  ticker: string; // EODHD code
+  exchange: string; // EODHD exchange code
+  yahooSymbol: string; // the same listing at Yahoo
+}
+
+/** The euro listing to track: Xetra first, then Milan, Paris, Amsterdam. Null if there is none. */
+export function pickEodhdListing(list: EodhdListing[]): Resolved | null {
+  for (const exchange of LISTING_ORDER) {
+    const hit = list.find((l) => l.exchange === exchange && l.currency === 'EUR');
+    if (hit) return { ticker: hit.code, exchange, yahooSymbol: `${hit.code}.${YAHOO_SUFFIX[exchange]}` };
+  }
+  return null;
+}
+
+/** The EODHD symbol of a position: the stored EODHD listing, else derived from the Yahoo symbol. */
+export function eodhdSymbolOf(p: { ticker: string | null; exchange: string | null; provider_symbol: string | null }): string | null {
+  if (p.ticker && p.exchange && p.exchange in YAHOO_SUFFIX) return `${p.ticker}.${p.exchange}`;
+  return p.provider_symbol ? toEodhdSymbol(p.provider_symbol) : null;
 }
 
 export const eodhdUrl = (symbol: string, from: string, key: string) =>
