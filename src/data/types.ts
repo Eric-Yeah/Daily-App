@@ -70,10 +70,11 @@ export interface Training {
   dayTitle: string;
   weekLabel: string;
   plannedTime?: string;
-  lastWeek: { done: number; planned: number };
+  lastWeekValue: string; // e.g. "4 von 4" or "3 Einheiten"
+  lastWeekLabel: string; // e.g. "letzte Woche"
   week: { label: string; plan: string; state: WeekDayState }[];
   streakWeeks: number;
-  thisWeek: { done: number; planned: number };
+  thisWeek: { done: number; planned: number | null };
   last: { name: string; day: string } | null;
   url: string;
 }

@@ -5,7 +5,8 @@ import { useLock } from './lib/lock';
 import { pullSettings } from './lib/settingsSync';
 import { useRoute } from './router';
 import { LockScreen, LoginPage, NoAccessPage } from './views/Access';
-import { MorePage, NewsPage } from './views/Pages';
+import { MorePage } from './views/Pages';
+import { NewsTab } from './views/NewsTab';
 import { DepotTab } from './views/depot/Depot';
 import { Today } from './views/today/Today';
 
@@ -29,7 +30,7 @@ export function App() {
     <div class="app">
       {route === 'heute' && <Today />}
       {route === 'depot' && <DepotTab />}
-      {route === 'news' && <NewsPage />}
+      {route === 'news' && <NewsTab />}
       {route === 'mehr' && <MorePage />}
       <TabBar current={route} />
     </div>

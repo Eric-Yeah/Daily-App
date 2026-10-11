@@ -14,13 +14,13 @@ Deine persönliche Tages-App (PWA, iPhone zuerst): **Morgen**, **Nachmittag** un
 | M1 | Oberfläche mit Beispieldaten, PWA, Deploy | **fertig** |
 | M2 | Supabase, Login, Face-ID-Sperre | **fertig** |
 | M3 | Depot: Positionen, Gruppen, CSV-Import | **fertig** |
-| M4 | Kurse (kostenlose Anbieter) | offen |
-| M5 | News und KI (Claude Haiku 5.5) | offen |
-| M6 | Briefings vorab + Push | offen |
-| M7 | Overload und Study App | offen |
+| M4 | Kurse (kostenlose Anbieter) | zurückgestellt |
+| M5 | News und KI (Claude Haiku 5.5) | **fertig** (KI-Schlüssel trägst du selbst ein) |
+| M6 | Briefings vorab + Push | **fertig** |
+| M7 | Overload und Study App | **fertig** (Training ohne Plan) |
 | M8 | Feinschliff, Passkey-Login | offen |
 
-Kurse, Meldungen, Termine, Training und „Dein Tag“ sind noch **Beispieldaten**. Das steht oben als „Beispieldaten · keine echten Kurse“ und lässt sich unter **Mehr → Beispieldaten anzeigen** ausschalten. Ohne Beispieldaten siehst du die ehrlichen Leerzustände („Noch keine Datenquelle verbunden“). **Echt** sind: Anmeldung, Einstellungen, „Heute erledigen“, „Eine Zeile zum Tag“ (seit M2) und das **Depot** mit Positionen, Gruppen und CSV-Import (seit M3). Die Kurse dazu kommen mit M4.
+Nur noch **Kurse, Depotwerte, Indizes und US-Markt** sind Beispieldaten (bis M4). Das steht oben als „Beispieldaten · keine echten Kurse“ und lässt sich unter **Mehr → Beispieldaten anzeigen** ausschalten. **Echt** sind: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App.
 
 ## Lokal starten
 
@@ -107,6 +107,38 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN, Stückzahl, Einstandskurs j
 - Die Datei selbst wird nur auf dem Gerät gelesen und nicht hochgeladen.
 
 **Themen** schlägt die App vorerst nach festen Regeln aus dem Namen vor (z. B. „MSCI World“ → Welt, USA). Ein KI-Vorschlag kommt mit M5.
+
+## News, Briefings und Push (ab M5/M6)
+
+**So läuft es:** In Supabase laufen zwei Edge Functions nach Zeitplan (pg_cron):
+- `daily-news` alle 30 Minuten (6 bis 23 Uhr): holt Meldungen aus festen, öffentlich angebotenen Feeds (tagesschau.de Wirtschaft und Finanzen, CNBC, EZB, Fed, Bundesbank) und sucht über die freie GDELT-Nachrichtensuche nach deinen Depot-Themen. Gespeichert werden nur Titel, Anreißer, Link, Quelle und Zeit, nie der ganze Artikel. Meldungen werden über die Themen deinen Positionen zugeordnet („betrifft 3 Positionen“). Neue Meldungen fasst Claude Haiku 5.5 kurz zusammen, in der Sprache der Quelle, mit Wichtigkeit 1 bis 5. Älter als 14 Tage wird gelöscht.
+- `daily-briefing` alle 15 Minuten: erstellt Morgen-, Nachmittags- und Abendbriefing zur eingestellten Zeit („Heute wichtig“, „Was bewegt den Markt gerade“, „Treiber des Tages“) und schickt den Push „Dein … ist fertig“ ohne Zahlen.
+- **Termine** (Zinsentscheide von Fed und EZB, US-Inflation, US-Arbeitsmarkt) kommen aus den offiziellen Kalendern, siehe `supabase/migrations/0004_…`. Einmal im Jahr mit den neuen Listen ergänzen. Das US-Statistikamt (BLS) sperrt automatische Abrufe, deshalb keine automatische Liste.
+- Die geplanten Aufrufe tragen eine geheime Kennung, die in der Datenbank (Supabase Vault) erzeugt wurde und sie nie verlässt. Ohne Kennung antworten die Functions mit „unauthorized“.
+
+**KI-Schlüssel (du trägst ihn selbst ein, nie in den Chat oder Code):**
+1. console.anthropic.com → *Settings* → *Workspaces* → am besten einen Workspace „daily“ mit eigenem **Spend Limit** (z. B. 2 $) anlegen → dort unter *API Keys* einen Schlüssel erzeugen.
+2. Supabase → Projekt der Study App → *Edge Functions* → *Secrets* (bzw. *Project Settings* → *Edge Functions*) → *Add new secret* → Name `DAILY_ANTHROPIC_API_KEY`, Wert: dein Schlüssel → *Save*.
+3. Fertig, beim nächsten Abruf (spätestens nach 30 Minuten) gibt es Kurzfassungen. Ohne Schlüssel laufen Meldungen weiter, nur mit dem Anreißer der Quelle.
+4. Unter *Mehr* → *KI-Zusammenfassungen* stellst du die Obergrenze pro Monat ein (Standard 1 $) und siehst den Verbrauch. Ist sie erreicht, stoppt die KI bis zum Monatsende.
+
+**Push am iPhone:** Daily vom Home-Bildschirm öffnen → *Mehr* → *Benachrichtigungen* → **Einschalten** → erlauben → **Test senden**. Uhrzeiten: Morgen 07:00, Nachmittag aus, Abend 17:45 (änderbar).
+
+**Functions neu veröffentlichen** (nach Änderungen in `supabase/functions/`):
+```bash
+npx supabase functions deploy daily-news daily-briefing --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
+```
+
+**Prüfen, ob der Zeitplan läuft** (SQL Editor):
+```sql
+select jobname, schedule, active from cron.job where jobname like 'daily-%';
+```
+
+## Training und „Dein Tag“ (ab M7)
+
+- **Training:** Daily liest die Tageszusammenfassungen, die Overload schon an die Study App schickt (Einheiten, Minuten, Art). Daraus: heute trainiert oder nicht, diese und letzte Woche, Streak in Wochen, zuletzt, Wochenleiste. Den Trainingsplan teilt Overload nicht, deshalb steht dort kein „geplant 16:30“. Voraussetzung: In Overload ist „Study App verbinden“ eingerichtet.
+- **Dein Tag:** aus der Study App der Stundenplan und die Vertretungen von heute (Stand: dein letzter Lanis-Abruf in der Study App) und Klausuren der nächsten 14 Tage.
+- Daily liest diese Daten nur und ändert nichts an Overload oder der Study App.
 
 ## Sicherheit und Datenschutz
 

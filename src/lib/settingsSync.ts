@@ -12,6 +12,10 @@ const COLUMNS = {
   hideAmounts: 'hide_amounts',
   lockTimeoutMin: 'lock_timeout_min',
   lossThresholdPct: 'loss_threshold_pct',
+  aiBudgetUsdMonth: 'ai_budget_usd_month',
+  pushMorning: 'push_morning',
+  pushAfternoon: 'push_afternoon',
+  pushEvening: 'push_evening',
 } as const satisfies Partial<Record<keyof Settings, string>>;
 
 type Synced = keyof typeof COLUMNS;
@@ -28,7 +32,13 @@ function fromRow(row: Record<string, unknown>): Partial<Settings> {
   for (const k of SYNCED) {
     const v = row[COLUMNS[k]];
     // numeric columns come back as numbers or strings depending on the column type
-    if (v !== undefined && v !== null) out[k] = k === 'lossThresholdPct' ? Number(v) : v;
+    if (v === undefined) continue;
+    // push times may be null (= off); numeric columns can come back as strings
+    if (v === null) {
+      if (k.startsWith('push')) out[k] = null;
+      continue;
+    }
+    out[k] = k === 'lossThresholdPct' || k === 'aiBudgetUsdMonth' ? Number(v) : v;
   }
   return out as Partial<Settings>;
 }

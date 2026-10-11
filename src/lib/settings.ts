@@ -11,6 +11,10 @@ export interface Settings {
   hideAmounts: boolean;
   lockTimeoutMin: number;
   lossThresholdPct: number;
+  aiBudgetUsdMonth: number;
+  pushMorning: string | null;
+  pushAfternoon: string | null;
+  pushEvening: string | null;
   showMockData: boolean;
 }
 
@@ -21,6 +25,10 @@ const DEFAULTS: Settings = {
   hideAmounts: false,
   lockTimeoutMin: 5,
   lossThresholdPct: -3,
+  aiBudgetUsdMonth: 1,
+  pushMorning: '07:00',
+  pushAfternoon: null,
+  pushEvening: '17:45',
   showMockData: true,
 };
 

@@ -103,7 +103,8 @@ function training(now: Date): Training {
     dayTitle: 'Pull-Tag',
     weekLabel: 'Woche 3',
     plannedTime: '16:30',
-    lastWeek: { done: 4, planned: 4 },
+    lastWeekValue: '4 von 4',
+    lastWeekLabel: 'letzte Woche',
     week: labels.map((label, i) => ({
       label,
       plan: plans[i],

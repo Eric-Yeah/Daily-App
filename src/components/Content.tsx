@@ -78,10 +78,8 @@ export function TrainingCard({ training }: { training: Training }) {
           </span>
         </div>
         <div class="training-main__right">
-          <span class="training-score">
-            {t.lastWeek.done} von {t.lastWeek.planned}
-          </span>
-          <span class="note">letzte Woche</span>
+          <span class="training-score">{t.lastWeekValue}</span>
+          <span class="note">{t.lastWeekLabel}</span>
         </div>
       </div>
       <ol class="week" aria-label="Trainingswoche">
@@ -103,7 +101,7 @@ export function TrainingCard({ training }: { training: Training }) {
         <div class="stat">
           <span class="stat__label">Diese Woche</span>
           <span class="stat__value">
-            {t.thisWeek.done} / {t.thisWeek.planned}
+            {t.thisWeek.planned === null ? t.thisWeek.done : `${t.thisWeek.done} / ${t.thisWeek.planned}`}
           </span>
           <span class="stat__sub">Einheiten</span>
         </div>

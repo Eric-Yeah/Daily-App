@@ -71,6 +71,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           cacheId: 'daily',
+          importScripts: ['push-handler.js'],
           cleanupOutdatedCaches: true,
           // Only precache the latin font subsets; the others are never needed for German/English text.
           globPatterns: ['**/*.{js,css,html,svg,png}', '**/*latin*.woff2'],
@@ -79,7 +80,7 @@ export default defineConfig(({ mode }) => {
     ],
     test: {
       environment: 'node',
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'supabase/functions/_shared/**/*.test.ts'],
     },
   };
 });

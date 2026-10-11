@@ -1149,3 +1149,8 @@ a.button--secondary:hover {
 .nowrap {
   white-space: nowrap;
 }
+.chip--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}

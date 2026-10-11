@@ -1,11 +1,12 @@
 import { currentSession } from '../lib/auth';
 import { getSettings } from '../lib/settings';
+import { liveAfternoon, liveEvening, liveMorning } from './live';
 import { createMockNotes, createMockSource } from './mock';
 import { createSupabaseNotes, createSupabaseTasks } from './personal';
 import { empty, type DataSource, type DayNoteStore, type TaskStore } from './types';
 
-// Market data (prices, news, events …) is still mock data until M4/M5, clearly marked in the UI.
-// Personal data (tasks, day notes) comes from Supabase as soon as you are signed in.
+// Market data (prices, indices, US market) is still mock data until M4, clearly marked in the UI.
+// Signed in, everything else is real: tasks, day notes, news, events, briefings, training, "Dein Tag".
 const NO_SOURCE = 'Noch keine Datenquelle verbunden.';
 
 const emptyTasks: TaskStore = {
@@ -48,6 +49,25 @@ function createEmptySource(tasks: TaskStore, notes: DayNoteStore): DataSource {
   };
 }
 
+/** Signed in: real news, events, briefings, training and "Dein Tag" replace the matching blocks. */
+function withLive(base: DataSource): DataSource {
+  return {
+    ...base,
+    async morning(now) {
+      const [b, l] = await Promise.all([base.morning(now), liveMorning(now)]);
+      return { ...b, ...l };
+    },
+    async afternoon(now) {
+      const [b, l] = await Promise.all([base.afternoon(now), liveAfternoon(now)]);
+      return { ...b, ...l };
+    },
+    async evening(now) {
+      const [b, l] = await Promise.all([base.evening(now), liveEvening(now)]);
+      return { ...b, ...l };
+    },
+  };
+}
+
 const cache = new Map<string, DataSource>();
 
 export function getDataSource(): DataSource {
@@ -67,6 +87,7 @@ export function getDataSource(): DataSource {
     } else {
       source = createEmptySource(personal!.tasks, personal!.notes);
     }
+    if (userId) source = withLive(source);
     cache.set(key, source);
   }
   return source;

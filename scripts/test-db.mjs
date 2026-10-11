@@ -20,7 +20,10 @@ const db = {
 
 const run = (file) => pglite.exec(readFileSync(file, 'utf8'));
 await run('supabase/tests/supabase-stub.sql');
-const migrations = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+// Migrations marked "-- supabase-only" need Supabase extensions (pg_cron, pg_net) and are skipped here.
+const migrations = readdirSync('supabase/migrations')
+  .filter((f) => f.endsWith('.sql') && !readFileSync(`supabase/migrations/${f}`, 'utf8').startsWith('-- supabase-only'))
+  .sort();
 for (const f of migrations) await run(`supabase/migrations/${f}`);
 // Every migration must be safe to run twice.
 for (const f of migrations) await run(`supabase/migrations/${f}`);
@@ -209,6 +212,74 @@ await test('Depot: Gruppe löschen lässt die Position ohne Gruppe stehen', () =
 
 await test('Depot: ohne Anmeldung kein Zugriff', () =>
   as('anon', null, () => rejects(db.query('select * from daily.positions'), /permission denied/)),
+);
+
+// --- News, Briefings, Push (0003, 0004) ---
+await db.query(
+  "insert into daily.news_items (url, title, source, published_at, feed) values ('https://example.com/a', 'Beispielmeldung', 'Beispiel', now(), 'test')",
+);
+await db.query("insert into daily.briefings (kind, day, content) values ('morning', current_date, '{}')");
+await db.query("insert into daily.push_keys (public_key, private_jwk) values ('PUB', '{\"d\":\"geheim\"}') on conflict do nothing");
+
+await test('News: Besitzer liest Meldungen, Briefings und Termine', () =>
+  as('authenticated', OWNER, async () => {
+    assert.equal((await db.query('select * from daily.news_items')).rowCount, 1);
+    assert.equal((await db.query('select * from daily.briefings')).rowCount, 1);
+    assert.ok((await db.query('select * from daily.market_events')).rowCount >= 40);
+  }),
+);
+
+await test('News: fremdes Konto sieht keine Meldungen, Briefings oder Kosten', () =>
+  as('authenticated', OTHER, async () => {
+    assert.equal((await db.query('select * from daily.news_items')).rowCount, 0);
+    assert.equal((await db.query('select * from daily.briefings')).rowCount, 0);
+    assert.equal((await db.query('select * from daily.ai_usage')).rowCount, 0);
+    assert.equal((await db.query('select * from daily.market_events')).rowCount, 0);
+  }),
+);
+
+await test('News: nur der Server schreibt Meldungen und Kosten', () =>
+  as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.news_items (url, title, source, published_at, feed) values ('https://x.y', 't', 's', now(), 'f')"), /permission denied/),
+  ).then(() =>
+    as('authenticated', OWNER, () => rejects(db.query("select daily.ai_usage_add('m', 1, 1, 1)"), /permission denied/)),
+  ),
+);
+
+await test('Push: nur der öffentliche Schlüssel ist lesbar, der private nie', () =>
+  as('authenticated', OWNER, async () => {
+    assert.equal((await db.query('select public_key from daily.push_keys')).rows[0].public_key, 'PUB');
+  }).then(() =>
+    as('authenticated', OWNER, () => rejects(db.query('select private_jwk from daily.push_keys'), /permission denied/)),
+  ),
+);
+
+await test('Push: Abos nur für das eigene Konto', () =>
+  as('authenticated', OWNER, async () => {
+    await db.query("insert into daily.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example.com/1', 'k', 'a')");
+    assert.equal((await db.query('select * from daily.push_subscriptions')).rowCount, 1);
+  }).then(() =>
+    as('authenticated', OTHER, () =>
+      rejects(db.query("insert into daily.push_subscriptions (endpoint, p256dh, auth) values ('https://push.example.com/2', 'k', 'a')"), /row-level security/),
+    ),
+  ),
+);
+
+await test('Cron-Kennung: im Tresor erzeugt, nur für den Server', async () => {
+  const r = await as('service_role', null, () => db.query('select daily.cron_secret() as s'));
+  assert.ok(r.rows[0].s && r.rows[0].s.length >= 60);
+  await as('authenticated', OWNER, () => rejects(db.query('select daily.cron_secret()'), /permission denied/));
+  await as('anon', null, () => rejects(db.query('select daily.cron_secret()'), /permission denied/));
+});
+
+await test('Server zählt KI-Kosten zusammen', () =>
+  as('service_role', null, async () => {
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 1000, 200, 0.0002)");
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 1000, 200, 0.0002)");
+    const r = await db.query('select requests, input_tokens, cost_usd from daily.ai_usage');
+    assert.equal(r.rows[0].requests, 2);
+    assert.equal(Number(r.rows[0].input_tokens), 2000);
+  }),
 );
 
 await test('Migrationsstand wird festgehalten', async () => {
