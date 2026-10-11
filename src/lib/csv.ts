@@ -1,6 +1,6 @@
 // CSV import for broker exports (German format). Runs only in the browser; the file never leaves the device
 // except for the rows you confirm.
-import { isValidIsin, normalizeIsin } from './isin';
+import { isValidIsin, isValidWkn, normalizeIsin, normalizeWkn } from './isin';
 
 /** German broker exports are often Windows-1252, not UTF-8. */
 export function decodeBytes(bytes: Uint8Array): string {
@@ -68,29 +68,30 @@ export function parseCsv(text: string, delimiter: Delimiter): string[][] {
   return rows.map((r) => r.map((c) => c.trim())).filter((r) => r.some((c) => c !== ''));
 }
 
-export type Field = 'name' | 'isin' | 'quantity' | 'costPerUnit' | 'costTotal';
+export type Field = 'name' | 'isin' | 'wkn' | 'quantity' | 'costPerUnit' | 'costTotal';
 export type Mapping = Partial<Record<Field, number>>;
 
 const HEADER_PATTERNS: Record<Field, RegExp> = {
   isin: /^isin$/i,
+  wkn: /^wkn$/i,
   name: /^(bezeichnung|wertpapier(name|bezeichnung)?|name|titel|produkt)$/i,
   quantity: /^(st(ü|ue)ck(zahl)?([ /].*)?|stk\.?|anzahl|bestand|menge|nominale?|st\.?\/?nom\.?)$/i,
   costPerUnit: /(einstandskurs|kaufkurs|einstandspreis|ø|durchschn|mittlerer).*|.*(einstandskurs|kaufkurs)/i,
   costTotal: /^(einstandswert|kaufwert|investiert|einstand( gesamt)?|kaufsumme)(\s*(in)?\s*(eur|€))?$/i,
 };
 
-/** Index of the header row: the first row that contains an ISIN column and another known column. */
+/** Index of the header row: the first row that contains an ISIN or WKN column and another known column. */
 export function findHeaderRow(rows: string[][]): number {
   for (let i = 0; i < Math.min(rows.length, 30); i++) {
     const m = guessMapping(rows[i]);
-    if (m.isin !== undefined && Object.keys(m).length >= 2) return i;
+    if ((m.isin !== undefined || m.wkn !== undefined) && Object.keys(m).length >= 2) return i;
   }
   return 0;
 }
 
 export function guessMapping(headers: string[]): Mapping {
   const mapping: Mapping = {};
-  const order: Field[] = ['isin', 'quantity', 'costTotal', 'costPerUnit', 'name'];
+  const order: Field[] = ['isin', 'wkn', 'quantity', 'costTotal', 'costPerUnit', 'name'];
   for (const field of order) {
     const idx = headers.findIndex((h, i) => HEADER_PATTERNS[field].test(h.trim()) && !Object.values(mapping).includes(i));
     if (idx >= 0) mapping[field] = idx;
@@ -118,7 +119,8 @@ export function parseNumber(raw: string, decimal: ',' | '.' = ','): number | nul
 export interface ImportItem {
   row: number; // 1-based line in the file (for messages)
   name: string;
-  isin: string;
+  isin: string | null; // an item has an ISIN, a WKN, or both
+  wkn: string | null;
   quantity: number;
   costPerUnit: number;
   status: 'new' | 'duplicate' | 'error';
@@ -126,33 +128,37 @@ export interface ImportItem {
 }
 
 /**
- * Turns the data rows into import items: validates ISIN and numbers, merges repeated ISINs
+ * Turns the data rows into import items: validates ISIN/WKN and numbers, merges repeated securities
  * (several lots: quantities add up, cost becomes the weighted average) and marks positions
- * that already exist.
+ * that already exist. `existingIds` holds the ISINs and WKNs already in the depot.
  */
 export function buildImport(
   rows: string[][],
   mapping: Mapping,
   decimal: ',' | '.',
-  existingIsins: ReadonlySet<string>,
+  existingIds: ReadonlySet<string>,
   firstRowNumber = 2,
 ): ImportItem[] {
   const out: ImportItem[] = [];
-  const byIsin = new Map<string, ImportItem>();
+  const byId = new Map<string, ImportItem>();
   rows.forEach((r, i) => {
     const get = (f: Field) => (mapping[f] !== undefined ? (r[mapping[f]!] ?? '') : '');
-    const isin = normalizeIsin(get('isin'));
-    const name = get('name') || isin;
+    const rawIsin = normalizeIsin(get('isin'));
+    const rawWkn = normalizeWkn(get('wkn'));
+    // A column value that is not valid is ignored when the other identifier is fine.
+    const isin = isValidIsin(rawIsin) ? rawIsin : null;
+    const wkn = isValidWkn(rawWkn) ? rawWkn : null;
+    const name = get('name') || isin || wkn || rawIsin || rawWkn;
     const quantity = parseNumber(get('quantity'), decimal);
     const total = mapping.costTotal !== undefined ? parseNumber(get('costTotal'), decimal) : null;
     let cost = mapping.costPerUnit !== undefined ? parseNumber(get('costPerUnit'), decimal) : null;
     if (cost === null && total !== null && quantity) cost = total / quantity;
-    const base = { row: firstRowNumber + i, name, isin, quantity: quantity ?? 0, costPerUnit: cost ?? 0 };
+    const base = { row: firstRowNumber + i, name, isin, wkn, quantity: quantity ?? 0, costPerUnit: cost ?? 0 };
 
     let message: string | undefined;
-    // Lines without ISIN and without quantity are headings or totals ("Summe"), not positions.
-    if (!isin && !get('quantity')) return;
-    if (!isValidIsin(isin)) message = 'ISIN fehlt oder ist ungültig';
+    // Lines without ISIN/WKN and without quantity are headings or totals ("Summe"), not positions.
+    if (!rawIsin && !rawWkn && !get('quantity')) return;
+    if (!isin && !wkn) message = mapping.wkn === undefined ? 'ISIN fehlt oder ist ungültig' : 'ISIN oder WKN fehlt oder ist ungültig';
     else if (quantity === null || quantity < 0) message = 'Stückzahl fehlt';
     else if (cost === null || cost < 0) message = 'Einstandskurs fehlt';
     if (message) {
@@ -160,7 +166,8 @@ export function buildImport(
       return;
     }
 
-    const prev = byIsin.get(isin);
+    const key = (isin ?? wkn)!;
+    const prev = byId.get(key);
     if (prev) {
       const qty = prev.quantity + base.quantity;
       prev.costPerUnit = qty > 0 ? (prev.quantity * prev.costPerUnit + base.quantity * base.costPerUnit) / qty : 0;
@@ -168,8 +175,9 @@ export function buildImport(
       prev.message = 'mehrere Zeilen zusammengefasst';
       return;
     }
-    const item: ImportItem = { ...base, status: existingIsins.has(isin) ? 'duplicate' : 'new' };
-    byIsin.set(isin, item);
+    const known = (isin !== null && existingIds.has(isin)) || (wkn !== null && existingIds.has(wkn));
+    const item: ImportItem = { ...base, status: known ? 'duplicate' : 'new' };
+    byId.set(key, item);
     out.push(item);
   });
   return out;

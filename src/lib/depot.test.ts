@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildImport, decodeBytes, detectDelimiter, findHeaderRow, guessMapping, parseCsv, parseNumber } from './csv';
-import { isValidIsin } from './isin';
+import { isValidIsin, isValidWkn, normalizeWkn, securityId } from './isin';
 import { computeDepot, costBasisOf, type PositionInput } from './portfolio';
 import { cleanTopics, suggestGroupName, suggestTopics } from './topics';
 
@@ -14,6 +14,20 @@ describe('ISIN', () => {
     expect(isValidIsin('IE00B4L5Y984')).toBe(false);
     expect(isValidIsin('IE00B4L5Y98')).toBe(false);
     expect(isValidIsin('1E00B4L5Y983')).toBe(false);
+  });
+});
+
+describe('WKN', () => {
+  it('accepts 6 digits/letters without I and O, ignoring case and spaces', () => {
+    for (const wkn of ['A0RPWH', '514000', ' a0rpwh ']) expect(isValidWkn(wkn)).toBe(true);
+    expect(normalizeWkn(' a0rpwh ')).toBe('A0RPWH');
+  });
+  it('rejects wrong lengths and forbidden letters', () => {
+    for (const wkn of ['', 'A0RPW', 'A0RPWHX', 'A0RPIH', 'A0RPOH', 'A0RP-H']) expect(isValidWkn(wkn)).toBe(false);
+  });
+  it('labels a position by its ISIN, else by its WKN', () => {
+    expect(securityId({ isin: 'IE00B4L5Y983', wkn: 'A0RPWH' })).toBe('IE00B4L5Y983');
+    expect(securityId({ isin: null, wkn: 'A0RPWH' })).toBe('WKN A0RPWH');
   });
 });
 
@@ -71,6 +85,29 @@ describe('CSV', () => {
     expect(items[1]).toMatchObject({ isin: 'IE00B5BMR087', status: 'duplicate' });
     expect(items[2]).toMatchObject({ status: 'error', message: 'ISIN fehlt oder ist ungültig' });
     expect(items[3]).toMatchObject({ status: 'error', message: 'Stückzahl fehlt' });
+  });
+  it('maps a WKN column and accepts rows with a WKN instead of an ISIN', () => {
+    const headers = ['Name', 'WKN', 'Stück', 'Einstandskurs'];
+    expect(guessMapping(headers)).toEqual({ name: 0, wkn: 1, quantity: 2, costPerUnit: 3 });
+    expect(findHeaderRow([['Depot'], headers])).toBe(1);
+    const rows = [
+      ['ETF A', 'A0RPWH', '10', '80,00'],
+      ['ETF A', 'a0rpwh', '10', '100,00'],
+      ['ETF B', '514000', '2', '50,00'],
+      ['Kaputt', 'A0RPOH', '1', '1'],
+    ];
+    const items = buildImport(rows, { name: 0, wkn: 1, quantity: 2, costPerUnit: 3 }, ',', new Set(['514000']));
+    expect(items).toHaveLength(3);
+    expect(items[0]).toMatchObject({ isin: null, wkn: 'A0RPWH', quantity: 20, costPerUnit: 90, status: 'new' });
+    expect(items[1]).toMatchObject({ wkn: '514000', status: 'duplicate' });
+    expect(items[2]).toMatchObject({ status: 'error', message: 'ISIN oder WKN fehlt oder ist ungültig' });
+  });
+  it('recognises a duplicate by WKN or ISIN when both columns exist', () => {
+    const rows = [['ETF', 'IE00B4L5Y983', 'A0RPWH', '1', '10']];
+    const map = { name: 0, isin: 1, wkn: 2, quantity: 3, costPerUnit: 4 };
+    expect(buildImport(rows, map, ',', new Set(['A0RPWH']))[0]).toMatchObject({ isin: 'IE00B4L5Y983', wkn: 'A0RPWH', status: 'duplicate' });
+    expect(buildImport(rows, map, ',', new Set(['IE00B4L5Y983']))[0].status).toBe('duplicate');
+    expect(buildImport(rows, map, ',', new Set())[0].status).toBe('new');
   });
   it('derives the per-unit cost from a total', () => {
     const items = buildImport([['ETF', 'IE00B4L5Y983', '4', '1.000,00']], { name: 0, isin: 1, quantity: 2, costTotal: 3 }, ',', new Set());

@@ -95,12 +95,13 @@ Deno.serve(async (req) => {
   // 1. Find the provider symbol for positions that have none. With the EODHD key, EODHD's ISIN search decides the
   //    listing (euro, Xetra first) and the Yahoo symbol is derived from it, so both sources mean the same exchange.
   //    Without it (or if EODHD knows nothing) Yahoo's search picks one. ticker/exchange hold the EODHD listing.
-  type Pos = { id: string; isin: string; ticker: string | null; exchange: string | null; provider_symbol: string | null };
+  type Pos = { id: string; isin: string | null; ticker: string | null; exchange: string | null; provider_symbol: string | null };
   const key = Deno.env.get('DAILY_EODHD_API_KEY');
   let eodhd = 0; // EODHD requests in this run (search and prices), limited by MAX_EODHD
   let lookups = 0;
   for (const pos of (positions ?? []) as Pos[]) {
-    if (pos.provider_symbol || lookups >= MAX_LOOKUPS) continue;
+    // Symbols are looked up by ISIN only: Yahoo and EODHD find nothing by WKN (WKN-only positions get their symbol by hand).
+    if (pos.provider_symbol || !pos.isin || lookups >= MAX_LOOKUPS) continue;
     if (lookups++ > 0) await sleep(GAP_MS);
     const listing = key && eodhd < MAX_EODHD && ++eodhd ? pickEodhdListing(parseEodhdSearch(await fetchJson(eodhdSearchUrl(pos.isin, key)))) : null;
     if (listing) {
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
   }
   log.lookups = lookups;
 
-  const eodhdOf = new Map<string, { eod: string; isin: string }>(); // Yahoo symbol → EODHD symbol
+  const eodhdOf = new Map<string, { eod: string; isin: string | null }>(); // Yahoo symbol → EODHD symbol
   for (const pos of (positions ?? []) as Pos[]) {
     const eod = pos.provider_symbol ? eodhdSymbolOf(pos) : null;
     if (pos.provider_symbol && eod) eodhdOf.set(pos.provider_symbol, { eod, isin: pos.isin });
@@ -180,7 +181,7 @@ Deno.serve(async (req) => {
       if (!rows.length && lastStatus === 404 && eodhd < MAX_EODHD) {
         // The stored listing is unknown at EODHD: look the ISIN up once and remember the EODHD listing (the Yahoo symbol stays).
         eodhd++;
-        const listing = pickEodhdListing(parseEodhdSearch(await fetchJson(eodhdSearchUrl(target.isin, key))));
+        const listing = target.isin ? pickEodhdListing(parseEodhdSearch(await fetchJson(eodhdSearchUrl(target.isin, key)))) : null;
         if (listing) {
           eod = `${listing.ticker}.${listing.exchange}`;
           await db.from('positions').update({ ticker: listing.ticker, exchange: listing.exchange }).eq('provider_symbol', symbol);

@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.0',
+    date: '2026-10-11',
+    title: 'WKN im Depot',
+    notes: [
+      'Positionen kannst du jetzt mit der WKN anlegen, entweder zusätzlich zur ISIN oder allein, wenn du die ISIN gerade nicht zur Hand hast. Eine von beiden brauchst du.',
+      'Im CSV-Import erkennt die App eine WKN-Spalte. Zeilen, die nur eine WKN haben, werden übernommen, und eine schon vorhandene Position wird auch über die WKN erkannt.',
+      'Das Kurssymbol wird weiterhin über die ISIN gefunden. Hat eine Position nur eine WKN, trägst du das Kurssymbol im Formular selbst ein oder ergänzt die ISIN.',
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-10-11',
     title: 'Langer Marktüberblick und Live-Blog am Nachmittag',

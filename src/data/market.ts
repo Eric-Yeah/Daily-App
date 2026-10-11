@@ -70,7 +70,8 @@ interface Bundle {
 const toPos = (r: Row): Position => ({
   id: r.id as string,
   name: r.name as string,
-  isin: r.isin as string,
+  isin: (r.isin as string | null) ?? null,
+  wkn: (r.wkn as string | null) ?? null,
   quantity: Number(r.quantity),
   costPerUnit: Number(r.cost_per_unit),
   currency: (r.currency as string) ?? 'EUR',

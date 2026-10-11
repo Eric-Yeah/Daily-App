@@ -124,12 +124,12 @@ Zugriff hat auch mit Passkey nur das Konto in `daily.owner`. Entfernen kannst du
 
 ## Depot (ab M3)
 
-Im Tab **Depot** legst du Positionen an (Name, ISIN, Stückzahl, Einstandskurs je Stück), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
+Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einstandskurs je Stück), ordnest sie Gruppen zu und vergibst Themen für die spätere News-Suche. Gespeichert wird nur das, keine Kontonummern und keine Zugangsdaten.
 
 **CSV-Import:** Depot bei deinem Broker als CSV exportieren → *Depot* → *CSV-Import* → Datei wählen. Die App erkennt Trennzeichen, Zeichensatz (auch ältere Windows-Exporte), die Kopfzeile und die Spalten. Prüfe die Zuordnung und die Vorschau:
-- Mehrere Zeilen mit derselben ISIN (mehrere Käufe) werden zusammengefasst, der Einstandskurs wird gewichtet gemittelt.
-- Schon vorhandene ISINs werden aktualisiert (Gruppe und Themen bleiben) oder übersprungen.
-- Zeilen mit ungültiger ISIN (Prüfziffer) erscheinen als Fehler und werden nicht übernommen.
+- Eine WKN-Spalte wird erkannt; eine Zeile braucht ISIN oder WKN. Mehrere Zeilen mit derselben ISIN/WKN (mehrere Käufe) werden zusammengefasst, der Einstandskurs wird gewichtet gemittelt.
+- Schon vorhandene ISINs/WKNs werden aktualisiert (Gruppe und Themen bleiben) oder übersprungen.
+- Zeilen ohne gültige ISIN (Prüfziffer) und ohne gültige WKN erscheinen als Fehler und werden nicht übernommen.
 - Die Datei selbst wird nur auf dem Gerät gelesen und nicht hochgeladen.
 
 **Themen** schlägt die App vorerst nach festen Regeln aus dem Namen vor (z. B. „MSCI World“ → Welt, USA). Ein KI-Vorschlag kommt mit M5.
@@ -166,7 +166,7 @@ select jobname, schedule, active from cron.job where jobname like 'daily-%';
 **So läuft es:** Die Edge Function `daily-prices` holt zu Handelszeiten alle 30 Minuten die Kurse und legt sie in der Datenbank ab (`price_snapshots` für den Tagesverlauf, `price_daily` für Schlusskurse). Die App liest nur aus der eigenen Datenbank und ruft nie einen Kursanbieter selbst auf.
 - **EODHD** (kostenlos, mit deinem Schlüssel, 20 Abrufe pro Tag) ist die **Hauptquelle für die Schlusskurse** der Positionen (Euro-Notierungen an Xetra, Mailand, Paris, Amsterdam). Einmal pro Morgen (08:02 Uhr, Mo bis Fr) ersetzt es die vorläufigen Werte der letzten Tage durch die offiziellen; für eine neue Position holt es das ganze letzte Jahr in einem Abruf. Das reicht für bis zu etwa 10 Positionen. Damit stammen Depotwert, Vortagsänderung und Woche/Monat/Jahr aus der lizenzierten Quelle.
 - **Yahoo Finance** (ohne Schlüssel, inoffiziell) liefert die Tageskurven (ca. 15 Minuten verzögert), DAX, Euro Stoxx 50, S&P 500, Nasdaq 100 und die US-Futures sowie den vorläufigen Schlusskurs des Tages. Ohne EODHD-Schlüssel kommen auch die Schlusskurse von Yahoo.
-- **Kurssymbol:** Zu jeder Position wird es automatisch über die ISIN gesucht und in der Position gespeichert. Mit EODHD-Schlüssel entscheidet EODHD die Börse (Euro-Notierung, Xetra bevorzugt, dann Mailand, Paris, Amsterdam) und das Yahoo-Symbol wird daraus abgeleitet, damit beide Quellen dieselbe Börse meinen. Du kannst das Symbol im Positionsformular auch selbst eintragen.
+- **Kurssymbol:** Zu jeder Position wird es automatisch über die ISIN gesucht (über die WKN allein findet keine der Quellen etwas, dort trägst du das Symbol selbst ein) und in der Position gespeichert. Mit EODHD-Schlüssel entscheidet EODHD die Börse (Euro-Notierung, Xetra bevorzugt, dann Mailand, Paris, Amsterdam) und das Yahoo-Symbol wird daraus abgeleitet, damit beide Quellen dieselbe Börse meinen. Du kannst das Symbol im Positionsformular auch selbst eintragen.
 - Zeiten: Xetra Mo bis Fr von 09:00 bis Handelsende, US-Indizes 15:30 bis 22:00 (Berliner Zeit, Sommer-/Winterzeit passt sich an). Feiertage ohne Handel liefern keine neuen Kurse.
 - **Ehrlich:** Yahoo bietet seine Schnittstelle inoffiziell an, die Nutzungsbedingungen erlauben automatische Abrufe nicht ausdrücklich. Sie kann ohne Vorwarnung ausfallen oder sich ändern. Mit EODHD-Schlüssel bleibt dann das Depot mit den letzten Schlusskursen sichtbar; es fehlen die Tageskurve und die Indizes. Ohne Daten zeigt die App „—“ oder „ohne Kurs“. Es wird nie geschätzt oder erfunden. Positionen in anderen Währungen als Euro werden nicht umgerechnet und stehen unter „ohne Kurs“. Ein von dir eingetragener manueller Kurs gilt nur als Wert ohne Tagesänderung.
 - MSCI World und MSCI Emerging Markets haben keine kostenlose Indexquelle und fehlen deshalb in der Indexzeile.

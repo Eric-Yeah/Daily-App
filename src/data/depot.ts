@@ -17,7 +17,8 @@ export interface Group {
 export interface Position {
   id: string;
   name: string;
-  isin: string;
+  isin: string | null; // a position needs an ISIN, a WKN, or both
+  wkn: string | null;
   quantity: number;
   costPerUnit: number;
   currency: string;
@@ -25,7 +26,7 @@ export interface Position {
   lossThresholdPct: number | null;
   topics: string[];
   manualPrice: number | null;
-  providerSymbol: string | null; // price provider symbol; found automatically per ISIN, editable
+  providerSymbol: string | null; // price provider symbol; found automatically per ISIN (not per WKN), editable
   archived: boolean;
 }
 
@@ -57,10 +58,15 @@ export interface DepotStore {
 
 type Row = Record<string, unknown>;
 
+/** The existing position an import item refers to: same ISIN, or same WKN. */
+const sameSecurity = (p: { isin: string | null; wkn: string | null }, i: { isin: string | null; wkn: string | null }) =>
+  (!!i.isin && p.isin === i.isin) || (!!i.wkn && p.wkn === i.wkn);
+
 const toPosition = (r: Row): Position => ({
   id: r.id as string,
   name: r.name as string,
-  isin: r.isin as string,
+  isin: (r.isin as string | null) ?? null,
+  wkn: (r.wkn as string | null) ?? null,
   quantity: Number(r.quantity),
   costPerUnit: Number(r.cost_per_unit),
   currency: (r.currency as string) ?? 'EUR',
@@ -76,6 +82,7 @@ const fromPosition = (p: PositionDraft): Row => ({
   ...(p.id ? { id: p.id } : {}),
   name: p.name,
   isin: p.isin,
+  wkn: p.wkn,
   quantity: p.quantity,
   cost_per_unit: p.costPerUnit,
   currency: p.currency,
@@ -91,6 +98,7 @@ const fromPosition = (p: PositionDraft): Row => ({
 
 function errorText(message: string): string {
   if (/duplicate key.*isin|positions_user_id_isin_key/i.test(message)) return 'Diese ISIN hast du schon im Depot.';
+  if (/duplicate key.*wkn|positions_user_id_wkn_key/i.test(message)) return 'Diese WKN hast du schon im Depot.';
   if (/duplicate key.*name|groups_user_id_name_key/i.test(message)) return 'Eine Gruppe mit diesem Namen gibt es schon.';
   if (/check constraint/i.test(message)) return 'Bitte prüfe deine Eingaben.';
   if (/fetch|network/i.test(message)) return 'Keine Verbindung. Versuch es gleich nochmal.';
@@ -144,6 +152,7 @@ function createSupabaseDepot(): DepotStore {
           return {
             name: i.name,
             isin: i.isin,
+            wkn: i.wkn,
             quantity: i.quantity,
             cost_per_unit: i.costPerUnit,
             ...(a ? { group_id: a.groupId, topics: a.topics } : {}),
@@ -155,9 +164,28 @@ function createSupabaseDepot(): DepotStore {
         if (error) return errorText(error.message);
       }
       if (duplicates === 'update' && dupes.length) {
-        // Only quantity, cost and name change; group, topics and thresholds stay as they are.
-        const { error } = await daily().from('positions').upsert(rows(dupes, false), { onConflict: 'user_id,isin' });
-        if (error) return errorText(error.message);
+        // Only quantity, cost and name change (plus a missing ISIN/WKN); group, topics and thresholds stay as they are.
+        const current = await daily().from('positions').select('id,isin,wkn');
+        if (current.error) return errorText(current.error.message);
+        const results = await Promise.all(
+          dupes.map((i) => {
+            const match = (current.data as { id: string; isin: string | null; wkn: string | null }[]).find((p) => sameSecurity(p, i));
+            if (!match) return { error: null };
+            return daily()
+              .from('positions')
+              .update({
+                name: i.name,
+                quantity: i.quantity,
+                cost_per_unit: i.costPerUnit,
+                ...(!match.isin && i.isin ? { isin: i.isin } : {}),
+                ...(!match.wkn && i.wkn ? { wkn: i.wkn } : {}),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', match.id);
+          }),
+        );
+        const failedUpdate = results.find((r) => r.error);
+        if (failedUpdate?.error) return errorText(failedUpdate.error.message);
       }
       emit();
       return {
@@ -196,7 +224,8 @@ function createMemoryDepot(): DepotStore {
       return null;
     },
     async savePosition(p) {
-      if (data.positions.some((x) => x.isin === p.isin && x.id !== p.id)) return 'Diese ISIN hast du schon im Depot.';
+      if (p.isin && data.positions.some((x) => x.isin === p.isin && x.id !== p.id)) return 'Diese ISIN hast du schon im Depot.';
+      if (p.wkn && data.positions.some((x) => x.wkn === p.wkn && x.id !== p.id)) return 'Diese WKN hast du schon im Depot.';
       data.positions = p.id
         ? data.positions.map((x) => (x.id === p.id ? ({ ...p } as Position) : x))
         : [...data.positions, { ...p, id: id() }];
@@ -213,7 +242,7 @@ function createMemoryDepot(): DepotStore {
       let updated = 0;
       let skipped = 0;
       for (const i of items) {
-        const existing = data.positions.find((p) => p.isin === i.isin);
+        const existing = data.positions.find((p) => sameSecurity(p, i));
         if (i.status === 'error') skipped++;
         else if (!existing) {
           const { groupId, topics } = assign(i);
@@ -221,6 +250,7 @@ function createMemoryDepot(): DepotStore {
             id: id(),
             name: i.name,
             isin: i.isin,
+            wkn: i.wkn,
             quantity: i.quantity,
             costPerUnit: i.costPerUnit,
             currency: 'EUR',
@@ -233,7 +263,13 @@ function createMemoryDepot(): DepotStore {
           });
           created++;
         } else if (duplicates === 'update') {
-          Object.assign(existing, { name: i.name, quantity: i.quantity, costPerUnit: i.costPerUnit });
+          Object.assign(existing, {
+            name: i.name,
+            quantity: i.quantity,
+            costPerUnit: i.costPerUnit,
+            ...(!existing.isin && i.isin ? { isin: i.isin } : {}),
+            ...(!existing.wkn && i.wkn ? { wkn: i.wkn } : {}),
+          });
           updated++;
         } else skipped++;
       }

@@ -23,3 +23,17 @@ export function isValidIsin(raw: string): boolean {
   }
   return sum % 10 === 0;
 }
+
+// WKN: 6 characters, digits and letters (the letters I and O are never used).
+export function normalizeWkn(raw: string): string {
+  return raw.replace(/\s+/g, '').toUpperCase();
+}
+
+export function isValidWkn(raw: string): boolean {
+  return /^[A-HJ-NP-Z0-9]{6}$/.test(normalizeWkn(raw));
+}
+
+/** Short label for a position's identifier: the ISIN, else "WKN …". */
+export function securityId(p: { isin: string | null; wkn: string | null }): string {
+  return p.isin ?? (p.wkn ? `WKN ${p.wkn}` : '');
+}

@@ -3,7 +3,7 @@ import { SkeletonCard, StateCard } from '../../components/Block';
 import { Header } from '../../components/Header';
 import { useDepot, type Group, type Position, type PositionDraft } from '../../data/depot';
 import { formatInputNumber, parseInputNumber } from '../../lib/format';
-import { isValidIsin, normalizeIsin } from '../../lib/isin';
+import { isValidIsin, isValidWkn, normalizeIsin, normalizeWkn, securityId } from '../../lib/isin';
 import { useSettings } from '../../lib/settings';
 import { cleanTopics, suggestGroupName, suggestTopics } from '../../lib/topics';
 import { go } from '../../router';
@@ -20,6 +20,7 @@ export function PositionFormPage({ id }: { id?: string }) {
 interface Errors {
   name?: string;
   isin?: string;
+  wkn?: string;
   symbol?: string;
   quantity?: string;
   cost?: string;
@@ -41,6 +42,7 @@ function PositionForm({
   const { lossThresholdPct } = useSettings();
   const [name, setName] = useState(existing?.name ?? '');
   const [isin, setIsin] = useState(existing?.isin ?? '');
+  const [wkn, setWkn] = useState(existing?.wkn ?? '');
   const [symbol, setSymbol] = useState(existing?.providerSymbol ?? '');
   const [quantity, setQuantity] = useState(formatInputNumber(existing?.quantity));
   const [cost, setCost] = useState(formatInputNumber(existing?.costPerUnit));
@@ -68,7 +70,13 @@ function PositionForm({
     const th = threshold.trim() ? parseInputNumber(threshold) : null;
     const next: Errors = {};
     if (!name.trim()) next.name = 'Bitte einen Namen eingeben.';
-    if (!isValidIsin(isin)) next.isin = 'Diese ISIN ist ungültig (12 Zeichen, Prüfziffer stimmt nicht).';
+    if (!isin.trim() && !wkn.trim()) next.isin = 'Bitte eine ISIN oder eine WKN eingeben.';
+    else {
+      if (isin.trim() && !isValidIsin(isin)) next.isin = 'Diese ISIN ist ungültig (12 Zeichen, Prüfziffer stimmt nicht).';
+      if (wkn.trim() && !isValidWkn(wkn)) next.wkn = 'Diese WKN ist ungültig (6 Zeichen, Ziffern und Buchstaben).';
+    }
+    const isinValue = isin.trim() ? normalizeIsin(isin) : null;
+    const wknValue = wkn.trim() ? normalizeWkn(wkn) : null;
     const sym = symbol.trim();
     if (sym && !/^[A-Za-z0-9.^=-]{1,40}$/.test(sym)) next.symbol = 'Nur Buchstaben, Ziffern und . ^ = - erlaubt.';
     if (q === null || q < 0) next.quantity = 'Bitte eine Stückzahl eingeben, z. B. 12,5.';
@@ -81,7 +89,8 @@ function PositionForm({
     const err = await save({
       id: existing?.id,
       name: name.trim().slice(0, 120),
-      isin: normalizeIsin(isin),
+      isin: isinValue,
+      wkn: wknValue,
       quantity: q!,
       costPerUnit: c!,
       currency: existing?.currency ?? 'EUR',
@@ -90,7 +99,7 @@ function PositionForm({
       topics: cleanTopics(topics),
       manualPrice: existing?.manualPrice ?? null,
       // a changed ISIN with an untouched symbol means the old symbol no longer fits: it is found again automatically
-      providerSymbol: sym && !(existing && normalizeIsin(isin) !== existing.isin && sym === existing.providerSymbol) ? sym : null,
+      providerSymbol: sym && !(existing && isinValue !== existing.isin && sym === existing.providerSymbol) ? sym : null,
       archived,
     });
     setBusy(false);
@@ -107,7 +116,7 @@ function PositionForm({
 
   return (
     <form class="page" onSubmit={submit} noValidate>
-      <Header dateLine={existing ? existing.isin : 'Neue Position'} title={existing ? 'Position bearbeiten' : 'Position anlegen'} />
+      <Header dateLine={existing ? securityId(existing) : 'Neue Position'} title={existing ? 'Position bearbeiten' : 'Position anlegen'} />
 
       <section class="card gap-12">
         <Field label="Name" error={errors.name}>
@@ -125,6 +134,18 @@ function PositionForm({
             placeholder="IE00B4L5Y983"
           />
         </Field>
+        <Field label="WKN (optional, wenn die ISIN fehlt)" error={errors.wkn}>
+          <input
+            class="input mono"
+            value={wkn}
+            maxLength={8}
+            autocapitalize="characters"
+            spellcheck={false}
+            onInput={(e) => setWkn(e.currentTarget.value.toUpperCase())}
+            onBlur={() => wkn && !isValidWkn(wkn) && setErrors({ ...errors, wkn: 'Diese WKN ist ungültig.' })}
+            placeholder="A0RPWH"
+          />
+        </Field>
         <Field label="Kurssymbol (leer = automatisch per ISIN)" error={errors.symbol}>
           <input
             class="input mono"
@@ -133,9 +154,12 @@ function PositionForm({
             autocapitalize="characters"
             spellcheck={false}
             onInput={(e) => setSymbol(e.currentTarget.value.toUpperCase())}
-            placeholder="wird automatisch gefunden"
+            placeholder={isin.trim() || !wkn.trim() ? 'wird automatisch gefunden' : 'z. B. EUNL.DE'}
           />
         </Field>
+        {!isin.trim() && wkn.trim() && !symbol.trim() && (
+          <p class="note">Über die WKN allein wird kein Kurssymbol gefunden. Trag es hier selbst ein oder ergänze die ISIN.</p>
+        )}
         <div class="field-row">
           <Field label="Stückzahl" error={errors.quantity}>
             <input class="input mono" inputMode="decimal" value={quantity} onInput={(e) => setQuantity(e.currentTarget.value)} placeholder="12,5" />

@@ -3,6 +3,7 @@ import { StateCard, SkeletonCard } from '../../components/Block';
 import { Header } from '../../components/Header';
 import { useDepot, type Group, type Position } from '../../data/depot';
 import { formatEuro, formatQuantity } from '../../lib/format';
+import { securityId } from '../../lib/isin';
 import { costBasisOf } from '../../lib/portfolio';
 import { useSettings } from '../../lib/settings';
 import { DEFAULT_GROUPS } from '../../lib/topics';
@@ -121,7 +122,7 @@ function PositionSection({ group, items, hidden }: { group: Group | null; items:
               <span class="position-row__main">
                 <span class="position-row__name">{p.name}</span>
                 <span class="position-row__sub">
-                  <span class="mono">{p.isin}</span> · <span class="nowrap">{formatQuantity(p.quantity)} Stk.</span> ·{' '}
+                  <span class="mono">{securityId(p)}</span> · <span class="nowrap">{formatQuantity(p.quantity)} Stk.</span> ·{' '}
                   <span class="nowrap">Ø {formatEuro(p.costPerUnit, { decimals: 2, hidden })}</span>
                 </span>
               </span>

@@ -202,6 +202,16 @@ await test('Depot: gleiche ISIN nur einmal je Konto', () =>
   ),
 );
 
+await test('Depot: WKN statt ISIN, aber eins von beiden ist Pflicht', () =>
+  as('authenticated', OWNER, async () => {
+    await db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('Nur WKN', 'A0RPWH', 1, 1)");
+    await rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('x', 'A0RPWH', 1, 1)"), /duplicate key/);
+    await rejects(db.query("insert into daily.positions (name, quantity, cost_per_unit) values ('x', 1, 1)"), /check constraint/);
+    await rejects(db.query("insert into daily.positions (name, wkn, quantity, cost_per_unit) values ('x', 'zu-kurz', 1, 1)"), /check constraint/);
+    await db.query("delete from daily.positions where wkn = 'A0RPWH'");
+  }),
+);
+
 await test('Depot: Gruppe löschen lässt die Position ohne Gruppe stehen', () =>
   as('authenticated', OWNER, async () => {
     await db.query('delete from daily.groups');

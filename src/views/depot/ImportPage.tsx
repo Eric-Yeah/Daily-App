@@ -6,10 +6,11 @@ import { buildImport, decodeBytes, detectDelimiter, findHeaderRow, guessMapping,
 import { formatEuro, formatQuantity } from '../../lib/format';
 import { suggestGroupName, suggestTopics } from '../../lib/topics';
 
-const FIELDS: { key: Field; label: string; required?: boolean }[] = [
+const FIELDS: { key: Field; label: string; hint?: string }[] = [
   { key: 'name', label: 'Name' },
-  { key: 'isin', label: 'ISIN', required: true },
-  { key: 'quantity', label: 'Stückzahl', required: true },
+  { key: 'isin', label: 'ISIN', hint: 'ISIN oder WKN nötig' },
+  { key: 'wkn', label: 'WKN', hint: 'ISIN oder WKN nötig' },
+  { key: 'quantity', label: 'Stückzahl', hint: 'Pflicht' },
   { key: 'costPerUnit', label: 'Einstandskurs je Stück' },
   { key: 'costTotal', label: 'oder: Einstandswert gesamt' },
 ];
@@ -33,7 +34,7 @@ export function ImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const existing = useMemo(
-    () => new Set(block?.status === 'ok' ? block.data.positions.map((p) => p.isin) : []),
+    () => new Set(block?.status === 'ok' ? block.data.positions.flatMap((p) => [p.isin, p.wkn].filter((x): x is string => !!x)) : []),
     [block],
   );
   const items = useMemo(
@@ -77,7 +78,7 @@ export function ImportPage() {
     errors: items.filter((i) => i.status === 'error').length,
   };
   const toImport = counts.fresh + (duplicates === 'update' ? counts.dupes : 0);
-  const mappingOk = mapping.isin !== undefined && mapping.quantity !== undefined && (mapping.costPerUnit !== undefined || mapping.costTotal !== undefined);
+  const mappingOk = (mapping.isin !== undefined || mapping.wkn !== undefined) && mapping.quantity !== undefined && (mapping.costPerUnit !== undefined || mapping.costTotal !== undefined);
 
   const run = async () => {
     setBusy(true);
@@ -111,7 +112,7 @@ export function ImportPage() {
           <h2>Datei wählen</h2>
           <p class="card-sub card-sub--loose">
             Exportiere dein Depot bei deinem Broker als CSV (Depotübersicht oder Bestand). Die Datei wird nur hier auf dem Gerät gelesen.
-            Gespeichert werden nur Name, ISIN, Stückzahl und Einstandskurs der Zeilen, die du bestätigst.
+            Gespeichert werden nur Name, ISIN oder WKN, Stückzahl und Einstandskurs der Zeilen, die du bestätigst.
           </p>
           <label class="button button--wide file-button">
             CSV-Datei auswählen
@@ -131,7 +132,7 @@ export function ImportPage() {
               <label key={f.key} class="setting">
                 <span>
                   {f.label}
-                  {f.required && <span class="setting__hint">Pflicht</span>}
+                  {f.hint && <span class="setting__hint">{f.hint}</span>}
                 </span>
                 <select
                   class="input"
@@ -166,7 +167,7 @@ export function ImportPage() {
             <h2>Optionen</h2>
             <label class="setting">
               <span>
-                Schon vorhandene ISIN
+                Schon vorhandene ISIN/WKN
                 <span class="setting__hint">Gruppe und Themen bleiben beim Aktualisieren erhalten.</span>
               </span>
               <select class="input" value={duplicates} onChange={(e) => setDuplicates(e.currentTarget.value as 'update' | 'skip')}>
@@ -196,17 +197,17 @@ export function ImportPage() {
             <p class="card-sub">
               {counts.fresh} neu · {counts.dupes} schon vorhanden · {counts.errors} mit Fehler
             </p>
-            {!mappingOk && <p class="form-error">Bitte mindestens ISIN, Stückzahl und einen Einstandswert zuordnen.</p>}
+            {!mappingOk && <p class="form-error">Bitte mindestens ISIN oder WKN, Stückzahl und einen Einstandswert zuordnen.</p>}
             <ul class="plain-list preview-list">
               {items.slice(0, 200).map((i) => (
-                <li key={`${i.row}-${i.isin}`} class="preview-row">
+                <li key={`${i.row}-${i.isin ?? i.wkn}`} class="preview-row">
                   <span class={`status status--${i.status}`}>{i.status === 'new' ? 'Neu' : i.status === 'duplicate' ? 'Schon da' : 'Fehler'}</span>
                   <span class="preview-row__main">
                     <span class="position-row__name">{i.name}</span>
                     <span class="position-row__sub mono">
                       {i.status === 'error'
                         ? `Zeile ${i.row}: ${i.message}`
-                        : `${i.isin} · ${formatQuantity(i.quantity)} Stk. · Ø ${formatEuro(i.costPerUnit, { decimals: 2 })}${i.message ? ` · ${i.message}` : ''}`}
+                        : `${i.isin ?? `WKN ${i.wkn}`} · ${formatQuantity(i.quantity)} Stk. · Ø ${formatEuro(i.costPerUnit, { decimals: 2 })}${i.message ? ` · ${i.message}` : ''}`}
                     </span>
                   </span>
                 </li>
