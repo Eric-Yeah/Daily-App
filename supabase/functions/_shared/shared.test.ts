@@ -3,7 +3,8 @@ import { daysBetween, hhmm, parts } from './berlin.ts';
 import { headlineDrivers, importantItems, inDays, rankNews, type NewsInput } from './briefing.ts';
 import { gdeltQuery, matchTopics, topicIndex, topTopics } from './newsTopics.ts';
 import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
-import { indexMoves, parseWrap } from './wrap.ts';
+import { liveCandidates, parseLive } from './liveblog.ts';
+import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 
 describe('RSS', () => {
   it('reads RSS 2.0 with CDATA, entities and HTML teasers', () => {
@@ -143,15 +144,111 @@ describe('market wrap', () => {
       news,
     );
     expect(wrap?.headline).toBe('Märkte warten auf die Fed');
+    expect(wrap?.points).toEqual([]);
     expect(wrap?.sections).toHaveLength(1);
     expect(wrap?.sections[0].sources).toEqual([
       { name: 'Quelle B', url: 'https://b.example/2' },
       { name: 'Quelle A', url: 'https://a.example/1' },
     ]);
   });
+  it('keeps at most three points and trims them', () => {
+    const wrap = parseWrap({ headline: 'H', sections: [{ title: 'T', text: 'x', source_ids: [] }], points: [' a ', 'b', '', 'c', 'd'] }, news);
+    expect(wrap?.points).toEqual(['a', 'b', 'c']);
+  });
   it('rejects unusable answers', () => {
     expect(parseWrap(null, news)).toBeNull();
     expect(parseWrap({ headline: '', sections: [] }, news)).toBeNull();
     expect(parseWrap({ headline: 'x', sections: [{ title: '', text: 'y', source_ids: [] }] }, news)).toBeNull();
+  });
+});
+
+describe('long overview', () => {
+  const news = [{ id: 1, title: 'A', url: 'https://a.example/1', source: 'Quelle A', importance: 3, summary: null, positions: 0, publishedAt: '2026-10-12T05:00:00Z', official: false }];
+  it('is long in the morning and evening, short at midday', () => {
+    expect(isLong('morning')).toBe(true);
+    expect(isLong('evening')).toBe(true);
+    expect(isLong('afternoon')).toBe(false);
+  });
+  it('keeps up to 8 long sections only in long mode', () => {
+    const sections = Array.from({ length: 8 }, (_, i) => ({ title: `T${i}`, text: 'x'.repeat(1200), source_ids: [1] }));
+    expect(parseWrap({ headline: 'H', sections }, news, true)?.sections).toHaveLength(8);
+    expect(parseWrap({ headline: 'H', sections }, news, true)?.sections[0].text).toHaveLength(1200);
+    expect(parseWrap({ headline: 'H', sections }, news, false)?.sections).toHaveLength(5);
+    expect(parseWrap({ headline: 'H', sections }, news, false)?.sections[0].text).toHaveLength(800);
+  });
+});
+
+describe('live blog', () => {
+  const item = (id: number, over: Partial<NewsInput> = {}): NewsInput => ({
+    id,
+    title: `Titel ${id}`,
+    url: `https://example.com/${id}`,
+    source: 'Quelle',
+    importance: 3,
+    summary: 'Text',
+    positions: 0,
+    publishedAt: `2026-10-12T1${id}:00:00Z`,
+    official: false,
+    ...over,
+  });
+  it('offers new news that is not rated unimportant and not covered yet, central banks first', () => {
+    const list = [item(1, { importance: 5 }), item(2, { importance: 2 }), item(3, { importance: 3, positions: 1 }), item(4, { importance: null, official: true }), item(5, { importance: 4 }), item(6, { importance: null })];
+    const ids = liveCandidates(list, new Set([5])).map((n) => n.id);
+    expect(ids).toEqual([4, 1, 3, 6]);
+    expect(ids).not.toContain(2); // rated unimportant
+    expect(ids).not.toContain(5); // already covered
+  });
+  it('turns the AI answer into entries with real sources only', () => {
+    const offered = [item(1), item(2)];
+    const out = parseLive(
+      {
+        entries: [
+          { headline: ' Fed hält Zinsen ', text: ' Text. ', importance: 9, item_ids: [2, 2, 99] },
+          { headline: 'Ohne Quelle', text: 'x', importance: 3, item_ids: [99] },
+          { headline: '', text: 'x', importance: 3, item_ids: [1] },
+        ],
+      },
+      offered,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ headline: 'Fed hält Zinsen', body: 'Text.', importance: 5, itemIds: [2] });
+    expect(out[0].sources).toEqual([{ name: 'Quelle', url: 'https://example.com/2' }]);
+  });
+  it('accepts an empty answer and rejects garbage', () => {
+    expect(parseLive({ entries: [] }, [item(1)])).toEqual([]);
+    expect(parseLive(null, [item(1)])).toEqual([]);
+  });
+});
+
+describe('long overview plan', () => {
+  const mk = (id: number, url = `https://example.com/${id}`): NewsInput => ({ id, title: `T${id}`, url, source: `Q${id}`, importance: 3, summary: null, positions: 0, publishedAt: '2026-10-12T05:00:00Z', official: false });
+  const pool = [mk(1), mk(2), mk(3), mk(4)];
+  it('keeps real ids only and assigns each news item to one topic', () => {
+    const plan = parsePlan(
+      {
+        headline: ' Start ',
+        points: ['a', 'b', 'c', 'd'],
+        topics: [
+          { title: 'Eins', item_ids: [1, 2, 99] },
+          { title: 'Zwei', item_ids: [2, 3] },
+          { title: 'Leer', item_ids: [99] },
+        ],
+      },
+      pool,
+    );
+    expect(plan?.headline).toBe('Start');
+    expect(plan?.points).toEqual(['a', 'b', 'c']);
+    expect(plan?.topics.map((t) => [t.title, t.items.map((n) => n.id)])).toEqual([
+      ['Eins', [1, 2]],
+      ['Zwei', [3]],
+    ]);
+  });
+  it('rejects plans without usable topics', () => {
+    expect(parsePlan({ headline: 'x', points: [], topics: [] }, pool)).toBeNull();
+    expect(parsePlan(null, pool)).toBeNull();
+  });
+  it('lists distinct sources, at most four', () => {
+    const items = [mk(1), mk(2), mk(3, 'https://example.com/1'), mk(4), mk(5), mk(6)];
+    expect(sectionSources(items).map((s) => s.url)).toEqual(['https://example.com/1', 'https://example.com/2', 'https://example.com/4', 'https://example.com/5']);
   });
 });

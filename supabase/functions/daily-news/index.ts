@@ -1,16 +1,20 @@
 // Daily App – Edge Function "daily-news" (Deno).
-// Fetches news from fixed, publicly offered feeds plus a GDELT search per depot topic, stores only
+// Fetches news from fixed, publicly offered feeds, stores only
 // title, teaser, link, source and time, links them to the positions by topic and summarises new ones
 // with Claude Haiku 5.5 (within the monthly budget). Depot-related and official items are summarised
 // first; general market news gets only a few summaries per run so the budget lasts.
+// Between 12:00 and 22:00 (Berlin) it also writes the afternoon live blog from new, important items.
 //
 // Called by pg_cron every 30 minutes with the secret header x-daily-cron (see migration 0005).
 // Deploy: npx supabase functions deploy daily-news --no-verify-jwt --use-api --project-ref <ref>
 import { admin, isCron, json, CORS, ownerId, ownerSettings } from '../_shared/admin.ts';
 import { askJson, RULES } from '../_shared/ai.ts';
-import { parts } from '../_shared/berlin.ts';
-import { gdeltQuery, matchTopics, topicIndex, topTopics } from '../_shared/newsTopics.ts';
-import { parseFeed, parseGdelt, type FeedItem } from '../_shared/rss.ts';
+import type { NewsInput } from '../_shared/briefing.ts';
+import { isoDay, parts } from '../_shared/berlin.ts';
+import { LIVE_SCHEMA, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
+import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
+import { indexMoves } from '../_shared/wrap.ts';
+import { parseFeed, type FeedItem } from '../_shared/rss.ts';
 
 interface Feed {
   id: string;
@@ -48,14 +52,11 @@ const FEEDS: Feed[] = [
 
 const UA = 'DailyApp/1.0 (+https://eric-yeah.github.io/Daily-App/)';
 const MAX_AGE_H = 48;
-const GDELT_TOPICS = 4;
 const MAX_PER_FEED = 25;
-const SUMMARY_BATCH = 10;
+const SUMMARY_BATCH = 15;
 const SUMMARY_MAX_PER_RUN = 30;
 // Items without a depot topic (general market news) get only a few summaries per run to protect the budget.
 const SUMMARY_GENERAL_PER_RUN = 6;
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchText(url: string): Promise<string | null> {
   try {
@@ -76,11 +77,86 @@ interface Candidate extends FeedItem {
   topics: string[];
 }
 
+const LIVE_INDEX = { '^GDAXI': 'DAX', '^STOXX50E': 'Euro Stoxx 50', '^GSPC': 'S&P 500', '^NDX': 'Nasdaq 100' } as const;
+
+/** Current index moves (latest snapshot vs. the close before), only if the snapshot is fresh (during trading). */
+async function liveIndices(db: ReturnType<typeof admin>, now: Date, today: string): Promise<{ name: string; changePct: number }[]> {
+  const symbols = Object.keys(LIVE_INDEX);
+  const [snaps, closes] = await Promise.all([
+    db.from('price_snapshots').select('symbol, ts, price').in('symbol', symbols).gte('ts', new Date(now.getTime() - 45 * 60_000).toISOString()).order('ts', { ascending: false }).limit(40),
+    db.from('price_daily').select('symbol, day, close').in('symbol', symbols).lt('day', today).gte('day', new Date(now.getTime() - 10 * 86400_000).toISOString().slice(0, 10)),
+  ]);
+  const prev = indexMoves((closes.data ?? []) as { symbol: string; day: string; close: number }[], LIVE_INDEX);
+  const out: { name: string; changePct: number }[] = [];
+  for (const [symbol, name] of Object.entries(LIVE_INDEX)) {
+    const last = (snaps.data ?? []).find((r: { symbol: string }) => r.symbol === symbol) as { price: number | string } | undefined;
+    const base = prev.find((p) => p.name === name);
+    if (last && base) out.push({ name, changePct: ((Number(last.price) - base.close) / base.close) * 100 });
+  }
+  return out;
+}
+
+/** Writes new live-blog entries for important news not covered yet. Returns a short status for the response. */
+async function liveBlog(db: ReturnType<typeof admin>, now: Date, budget: number, windowHours: number): Promise<string> {
+  const today = isoDay(parts(now));
+  const { data: entries } = await db.from('liveblog_entries').select('headline, item_ids').eq('day', today).order('created_at', { ascending: false }).limit(60);
+  const covered = new Set<number>((entries ?? []).flatMap((e: { item_ids: number[] }) => e.item_ids));
+  const reported = (entries ?? []).slice(0, 6).map((e: { headline: string }) => e.headline);
+
+  const { data } = await db
+    .from('news_items')
+    .select('id, title, url, source, teaser, published_at, official, news_summaries(summary, importance), news_links(position_id)')
+    // Items this run (or the run before) stored; forced test runs can look further back via published_at.
+    .or(`fetched_at.gte.${new Date(now.getTime() - 40 * 60_000).toISOString()},published_at.gte.${new Date(now.getTime() - windowHours * 3600_000).toISOString()}`)
+    .order('published_at', { ascending: false })
+    .limit(300);
+  const news: NewsInput[] = (data ?? []).map((n: Record<string, unknown>) => {
+    const sum = (n.news_summaries as { summary: string; importance: number }[] | null)?.[0];
+    return {
+      id: n.id as number,
+      title: n.title as string,
+      url: n.url as string,
+      source: n.source as string,
+      importance: sum?.importance ?? null,
+      summary: sum?.summary ?? ((n.teaser as string | null) || null),
+      positions: (n.news_links as unknown[] | null)?.length ?? 0,
+      publishedAt: n.published_at as string,
+      official: Boolean(n.official),
+    };
+  });
+  const offered = liveCandidates(news, covered);
+  if (!offered.length) return 'nothing new';
+
+  const res = await askJson<unknown>(db, budget, {
+    system: liveSystem(RULES),
+    user: liveUser({
+      time: `${String(parts(now).hour).padStart(2, '0')}:${String(parts(now).minute).padStart(2, '0')}`,
+      indices: await liveIndices(db, now, today),
+      reported,
+      news: offered,
+    }),
+    maxTokens: 1500,
+    schema: LIVE_SCHEMA as unknown as Record<string, unknown>,
+  });
+  if (!res.ok) return `ai ${res.reason}`;
+  const fresh = parseLive(res.data, offered);
+  if (fresh.length) {
+    const { error } = await db.from('liveblog_entries').insert(
+      fresh.map((e) => ({ day: today, headline: e.headline, body: e.body, importance: e.importance, sources: e.sources, item_ids: e.itemIds })),
+    );
+    if (error) {
+      console.error('liveblog insert failed', error.message);
+      return 'insert failed';
+    }
+  }
+  return `${fresh.length} entries`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   const db = admin();
   if (!(await isCron(req, db))) return json(401, { error: 'unauthorized' });
-  const body = (await req.json().catch(() => ({}))) as { force?: boolean };
+  const body = (await req.json().catch(() => ({}))) as { force?: boolean; liveHours?: number };
 
   const now = new Date();
   const hour = parts(now).hour;
@@ -118,32 +194,7 @@ Deno.serve(async (req) => {
     stats[f.id] = n;
   });
 
-  // 2. GDELT search for the most widely held topics (rate limit: one request every 5 seconds)
-  for (const [i, topic] of topTopics(idx, GDELT_TOPICS).entries()) {
-    if (i > 0) await sleep(5500);
-    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(gdeltQuery(topic))}&mode=artlist&maxrecords=8&timespan=24h&sort=datedesc&format=json`;
-    const text = await fetchText(url);
-    if (!text) {
-      stats[`gdelt:${topic}`] = 'unreachable';
-      continue;
-    }
-    let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      stats[`gdelt:${topic}`] = 'no json';
-      continue;
-    }
-    stats[`gdelt:${topic}`] = 0;
-    for (const a of parseGdelt(parsed)) {
-      if (!a.publishedAt || a.publishedAt.getTime() < minDate) continue;
-      const found = matchTopics(a.title, topics);
-      candidates.push({ ...a, feed: 'gdelt', official: false, topics: found.length ? found : [topic] });
-      stats[`gdelt:${topic}`] = Number(stats[`gdelt:${topic}`]) + 1;
-    }
-  }
-
-  // 3. Store (first source wins for a URL)
+  // 2. Store (first source wins for a URL)
   const seen = new Set<string>();
   const rows = candidates
     .filter((c) => !seen.has(c.url) && seen.add(c.url))
@@ -171,7 +222,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 4. Link recent news to positions (recomputed, so changed topics are picked up too)
+  // 3. Link recent news to positions (recomputed, so changed topics are picked up too)
   const { data: recent } = await db
     .from('news_items')
     .select('id, title, teaser, topics')
@@ -187,7 +238,7 @@ Deno.serve(async (req) => {
     if (error) console.error('news_links upsert failed', error.message);
   }
 
-  // 5. Summaries for new items (most relevant first), within the budget
+  // 4. Summaries for new items (most relevant first), within the budget
   const { data: open } = await db
     .from('news_items')
     .select('id, title, teaser, source, lang, published_at, official, news_summaries(item_id), news_links(position_id)')
@@ -213,12 +264,12 @@ Deno.serve(async (req) => {
       .join('\n');
     const res = await askJson<{ items: { id: number; summary: string; importance: number; headline_only: boolean }[] }>(db, settings.aiBudgetUsdMonth, {
       system: `Du fasst Wirtschafts- und Börsenmeldungen für einen privaten Tagesüberblick zusammen.
-Für jede Meldung: summary = 1 bis 2 kurze Sätze (höchstens 280 Zeichen), importance = 1 bis 5
+Für jede Meldung: summary = 2 bis 3 Sätze (höchstens 450 Zeichen), so ausführlich, wie der gelieferte Text es hergibt, importance = 1 bis 5
 (5: Zinsentscheide, wichtige Konjunkturdaten, Quartalszahlen großer Unternehmen, Übernahmen, Regulierung;
 1: Meinungsstücke, Werbung, Wiederholungen, Ratgeber).
 ${RULES}`,
       user: `Meldungen (eine JSON-Zeile pro Meldung):\n${user}`,
-      maxTokens: 3000,
+      maxTokens: 4500,
       schema: {
         type: 'object',
         additionalProperties: false,
@@ -259,8 +310,13 @@ ${RULES}`,
     summarised += summaries.length;
   }
 
-  // 6. Keep the table small: nothing older than 14 days
-  await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());
+  // 5. Live blog (afternoon and evening, Berlin time)
+  let live = 'off';
+  if (body.force || (hour >= 12 && hour <= 22)) live = await liveBlog(db, now, settings.aiBudgetUsdMonth, body.force && body.liveHours ? Math.min(72, body.liveHours) : 0);
 
-  return json(200, { candidates: candidates.length, stored: rows.length, storeErrors, summarised, ai: aiStop ?? 'ok', feeds: stats });
+  // 6. Keep the tables small: news 14 days, live blog 30 days
+  await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());
+  await db.from('liveblog_entries').delete().lt('created_at', new Date(now.getTime() - 30 * 86400_000).toISOString());
+
+  return json(200, { candidates: candidates.length, stored: rows.length, storeErrors, summarised, ai: aiStop ?? 'ok', live, feeds: stats });
 });

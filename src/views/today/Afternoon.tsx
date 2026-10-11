@@ -1,7 +1,7 @@
 import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { Header, useGreeting } from '../../components/Header';
-import { WrapCard } from '../../components/Wrap';
+import { LiveBlogCard } from '../../components/Wrap';
 import { Axis, ChangeTiles, DepotHeadline, ExternalLink, IndexStrip, IntradayChart, MissingNote } from '../../components/Market';
 import type { DataSource } from '../../data/types';
 import { formatDateLong, formatDuration, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
@@ -38,7 +38,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
       {switcher}
       <ViewState view={view}>
 
-      <WrapCard kind="afternoon" />
+      <LiveBlogCard />
 
       <BlockView block={data?.depot} title="Depot heute" skeletonHeight={260}>
         {(d) => {

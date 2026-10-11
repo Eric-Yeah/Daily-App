@@ -75,6 +75,7 @@ export interface LiveWrap {
   day: string; // YYYY-MM-DD
   createdAt: Date;
   headline: string;
+  points: string[]; // the three main drivers (absent in older overviews)
   sections: { title: string; text: string; sources: { name: string; url: string }[] }[];
 }
 
@@ -87,12 +88,35 @@ export async function loadWrap(now: Date, kind?: WrapKind): Promise<Block<LiveWr
   if (kind) q = q.eq('kind', kind).eq('day', todayIso(now));
   const { data, error } = await q;
   if (error) return failed('Marktüberblick gerade nicht verfügbar.');
-  for (const row of (data ?? []) as { kind: WrapKind; day: string; created_at: string; content: { wrap?: { headline: string; sections: LiveWrap['sections'] } | null } }[]) {
+  for (const row of (data ?? []) as { kind: WrapKind; day: string; created_at: string; content: { wrap?: { headline: string; points?: string[]; sections: LiveWrap['sections'] } | null } }[]) {
     const w = row.content?.wrap;
     if (!w?.headline || !Array.isArray(w.sections) || !w.sections.length) continue;
-    return ok({ kind: row.kind, day: row.day, createdAt: new Date(row.created_at), headline: w.headline, sections: w.sections });
+    return ok({ kind: row.kind, day: row.day, createdAt: new Date(row.created_at), headline: w.headline, points: w.points ?? [], sections: w.sections });
   }
   return empty('Noch kein Marktüberblick.');
+}
+
+export interface LiveBlogEntry {
+  id: number;
+  createdAt: Date;
+  headline: string;
+  body: string;
+  importance: number;
+  sources: { name: string; url: string }[];
+}
+
+/** Today's live-blog entries, newest first. */
+export async function loadLiveBlog(now: Date): Promise<Block<LiveBlogEntry[]>> {
+  const { data, error } = await daily()
+    .from('liveblog_entries')
+    .select('id,created_at,headline,body,importance,sources')
+    .eq('day', todayIso(now))
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) return failed('Live-Blog gerade nicht verfügbar.');
+  const rows = (data ?? []) as { id: number; created_at: string; headline: string; body: string; importance: number; sources: LiveBlogEntry['sources'] }[];
+  if (!rows.length) return empty('Noch keine Einträge. Der Live-Blog meldet sich, sobald es zwischen 12 und 22 Uhr wichtige neue Meldungen gibt.');
+  return ok(rows.map((r) => ({ id: r.id, createdAt: new Date(r.created_at), headline: r.headline, body: r.body, importance: r.importance, sources: Array.isArray(r.sources) ? r.sources : [] })));
 }
 
 /** Most relevant first: importance, number of positions, then recency. */

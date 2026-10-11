@@ -318,6 +318,30 @@ await test('Kurse: Preis muss positiv sein, Symbol begrenzt', () =>
   ),
 );
 
+// --- Live-Blog (0008) ---
+await asCommit('service_role', null, () =>
+  db.query("insert into daily.liveblog_entries (day, headline, body, sources) values (current_date, 'Test', 'Text', '[]')"),
+);
+
+await test('Live-Blog: Besitzer liest, fremdes Konto und anon nicht, nur der Server schreibt', async () => {
+  await as('authenticated', OWNER, async () => assert.equal((await db.query('select * from daily.liveblog_entries')).rowCount, 1));
+  await as('authenticated', OTHER, async () => assert.equal((await db.query('select * from daily.liveblog_entries')).rowCount, 0));
+  await as('anon', null, () => rejects(db.query('select * from daily.liveblog_entries'), /permission denied/));
+  await as('authenticated', OWNER, () =>
+    rejects(db.query("insert into daily.liveblog_entries (day, headline, body) values (current_date, 'x', 'y')"), /permission denied/),
+  );
+});
+
+await test('Live-Blog: Wichtigkeit und Länge begrenzt', () =>
+  as('service_role', null, () =>
+    rejects(db.query("insert into daily.liveblog_entries (day, headline, body, importance) values (current_date, 'x', 'y', 9)"), /check constraint/),
+  ).then(() =>
+    as('service_role', null, () =>
+      rejects(db.query('insert into daily.liveblog_entries (day, headline, body) values (current_date, $1, $2)', ['x', 'y'.repeat(801)]), /check constraint/),
+    ),
+  ),
+);
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

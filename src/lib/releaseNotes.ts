@@ -9,6 +9,19 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.4.0',
+    date: '2026-10-11',
+    title: 'Langer Marktüberblick und Live-Blog am Nachmittag',
+    notes: [
+      'Neu: der Live-Blog im Nachmittag. Zwischen 12 und 22 Uhr schreibt die KI kurze Einträge zu neuen, wichtigen Meldungen, mit Uhrzeit und Quellen. Die Seite aktualisiert sich alle zwei Minuten.',
+      'Der Marktüberblick am Morgen und am Abend ist deutlich länger, bis zu etwa 5 bis 7 Minuten Lesezeit, mit den wichtigsten Themen zuerst. In der Tagesansicht siehst du zuerst die Überschrift und die drei wichtigsten Punkte, „Ganzen Überblick lesen“ klappt den ganzen Text auf.',
+      'Wie lang der Überblick wird, hängt von den Meldungen ab. An ruhigen Tagen wie am Wochenende ist er kürzer, aufgefüllt wird nicht.',
+      'Die Zusammenfassungen sind länger: Meldungen bekommen 2 bis 3 Sätze.',
+      '„Was bewegt den Markt gerade“ und „Treiber des Tages“ kommen aus demselben KI-Aufruf wie der Marktüberblick.',
+      'Günstiger im Betrieb: Die KI rechnet ohne zusätzliches Nachdenken und fasst Meldungen in größeren Paketen zusammen. Die Web-Suche ist abgeschaltet, die nicht funktionierende GDELT-Suche entfernt.',
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-11',
     title: 'Marktüberblick, Suche und mehr Filter',

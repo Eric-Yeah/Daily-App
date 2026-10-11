@@ -1273,6 +1273,12 @@ a.button--secondary:hover {
 .wrap__sources a {
   font-weight: 700;
 }
+.live__body .wrap__sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+}
 .wrap__note {
   font-size: 12px;
   line-height: 17px;
@@ -1302,4 +1308,66 @@ a.button--secondary:hover {
 .input[type='search'] {
   -webkit-appearance: none;
   appearance: none;
+}
+
+.wrap__points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-soft);
+}
+.wrap__lead {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-soft);
+}
+.live__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.live__entry {
+  display: flex;
+  gap: 12px;
+}
+.live__time {
+  flex: none;
+  width: 44px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.live__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.live__body h3 {
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.live__body p {
+  font-size: 14px;
+  line-height: 21px;
+  color: var(--text-soft);
+}
+.live__entry--important .live__body h3::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--link);
 }

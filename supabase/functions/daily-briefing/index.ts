@@ -5,7 +5,7 @@
 // - { op: "test" } with the owner's login: sends a test notification to the owner's devices.
 // Deploy: npx supabase functions deploy daily-briefing --no-verify-jwt --use-api --project-ref <ref>
 import { admin, adminPublic, isCron, json, CORS, ownerFromRequest, ownerId, ownerSettings } from '../_shared/admin.ts';
-import { askJson, RULES } from '../_shared/ai.ts';
+import { askJson, RULES, searchWeb } from '../_shared/ai.ts';
 import { hhmm, hhmmToMinutes, isoDay, minuteOfDay, parts } from '../_shared/berlin.ts';
 import {
   DEFAULT_TIMES,
@@ -20,10 +20,28 @@ import {
   type NewsInput,
 } from '../_shared/briefing.ts';
 import { sendPush, vapidKeys } from '../_shared/push.ts';
-import { indexMoves, parseWrap, WRAP_SCHEMA, wrapSystem, wrapUser } from '../_shared/wrap.ts';
+import {
+  indexMoves,
+  isLong,
+  parsePlan,
+  parseWrap,
+  PLAN_SCHEMA,
+  planSystem,
+  SECTION_SCHEMA,
+  sectionSources,
+  sectionSystem,
+  sectionUser,
+  WRAP_SCHEMA,
+  wrapSystem,
+  wrapUser,
+  type MarketWrap,
+} from '../_shared/wrap.ts';
 
 const KINDS: BriefingKind[] = ['morning', 'afternoon', 'evening'];
 const INDEX_NAMES: Record<string, string> = { '^GDAXI': 'DAX', '^STOXX50E': 'Euro Stoxx 50', '^GSPC': 'S&P 500', '^NDX': 'Nasdaq 100' };
+// The paid web search in the morning overview is switched off: in a test it found little the news feeds did not already
+// have (Reuters, AP and others block the search crawler). Set to true to use it again (about 0.30 USD a month).
+const WEB_SEARCH_ENABLED = false;
 const KIND_LABEL: Record<BriefingKind, string> = { morning: 'Morgen', afternoon: 'Mittag', evening: 'Abend' };
 const APP_URL = 'https://eric-yeah.github.io/Daily-App/#/heute';
 
@@ -32,10 +50,10 @@ type Db = ReturnType<typeof admin>;
 async function loadNews(db: Db, sinceIso: string): Promise<NewsInput[]> {
   const { data } = await db
     .from('news_items')
-    .select('id, title, url, source, published_at, official, news_summaries(summary, importance), news_links(position_id)')
+    .select('id, title, url, source, teaser, published_at, official, news_summaries(summary, importance), news_links(position_id)')
     .gte('published_at', sinceIso)
     .order('published_at', { ascending: false })
-    .limit(150);
+    .limit(300);
   return (data ?? []).map((n: Record<string, unknown>) => {
     const s = (n.news_summaries as { summary: string; importance: number }[] | null)?.[0];
     return {
@@ -44,7 +62,8 @@ async function loadNews(db: Db, sinceIso: string): Promise<NewsInput[]> {
       url: n.url as string,
       source: n.source as string,
       importance: s?.importance ?? null,
-      summary: s?.summary ?? null,
+      // The AI summary if there is one, else the source's own teaser, so the overview has material for every item.
+      summary: s?.summary ?? ((n.teaser as string | null) || null),
       positions: (n.news_links as unknown[] | null)?.length ?? 0,
       publishedAt: n.published_at as string,
       official: Boolean(n.official),
@@ -70,8 +89,9 @@ function aiInput(news: NewsInput[]): string {
 }
 
 /** The AI market overview. Null (and the app shows nothing) if there is no key, no budget or too little news. */
-async function makeWrap(db: Db, kind: BriefingKind, now: Date, budget: number, tz: string, news: NewsInput[], events: Record<string, unknown>[]) {
-  const pool = rankNews(news).slice(0, 30);
+async function makeWrap(db: Db, kind: BriefingKind, now: Date, budget: number, tz: string, news: NewsInput[], events: Record<string, unknown>[], debug: string[]) {
+  const long = isLong(kind);
+  let pool = rankNews(news).slice(0, long ? 70 : 30);
   if (pool.length < 3) return null;
   const from = new Date(now.getTime() - 10 * 86400_000).toISOString().slice(0, 10);
   const { data: rows } = await db.from('price_daily').select('symbol, day, close').in('symbol', Object.keys(INDEX_NAMES)).gte('day', from);
@@ -82,21 +102,86 @@ async function makeWrap(db: Db, kind: BriefingKind, now: Date, budget: number, t
     .sort((a, b) => a.at.getTime() - b.at.getTime())
     .map((e) => ({ title: e.title, time: `${isoDay(parts(e.at, tz)) === today ? 'heute' : 'morgen'} ${hhmm(e.at, tz)} Uhr` }));
   const weekday = new Intl.DateTimeFormat('de-DE', { timeZone: tz, weekday: 'long' }).format(now);
-  const res = await askJson<unknown>(db, budget, {
-    system: wrapSystem(kind, RULES),
-    user: wrapUser({
-      dayLabel: `${weekday}, ${today}, ${KIND_LABEL[kind]}`,
-      indices: indexMoves((rows ?? []) as { symbol: string; day: string; close: number }[], INDEX_NAMES),
-      events: upcoming,
-      news: pool,
-    }),
-    maxTokens: 1800,
-    schema: WRAP_SCHEMA as unknown as Record<string, unknown>,
+
+  // Morning only: one web search for what happened overnight (the one paid search per day, about 30 cents a month).
+  if (kind === 'morning' && WEB_SEARCH_ENABLED) {
+    const web = await searchWeb(db, budget, {
+      system: `Du recherchierst für einen Morgenüberblick der Märkte. Suche genau einmal nach den wichtigsten Börsen- und Wirtschaftsmeldungen der letzten Nacht (Schluss der US-Börsen, Asien, Notenbanken, Rohstoffe), am liebsten von Nachrichtenagenturen wie Reuters, AP oder Bloomberg.
+Gib danach 4 bis 6 Stichpunkte auf Deutsch mit den wichtigsten Fakten wieder, jeder Stichpunkt mit einer Quelle. Nur was in den Suchergebnissen steht, nichts ergänzen, keine Prognosen, keine Anlageempfehlung. Zahlen nur, wenn sie in den Ergebnissen stehen.`,
+      user: `Heute ist ${weekday}, ${today}. Suchvorschlag: "stock markets overnight Asia Wall Street close oil Fed ${today}"`,
+      maxUses: 1,
+      maxTokens: 1200,
+      // Only established news and finance sites, no blogs.
+      // Reuters, AP, FT and others block the search crawler; the helper drops blocked domains automatically.
+      allowedDomains: ['reuters.com', 'apnews.com', 'bloomberg.com', 'ft.com', 'wsj.com', 'cnbc.com', 'marketwatch.com', 'bbc.com', 'theguardian.com', 'finance.yahoo.com', 'investing.com', 'tagesschau.de', 'handelsblatt.com'],
+    });
+    debug.push(web.ok ? `web: ${web.searches} searches, ${web.hits.length} hits${web.error ? `, ${web.error}` : ''}` : `web: ${web.reason}${web.error ? ` ${web.error.slice(0, 120)}` : ''}`);
+    if (web.ok) {
+      const items: NewsInput[] = web.hits.slice(0, 6).filter((h) => URL.canParse(h.url)).map((h, i) => ({
+        id: 100_000 + i,
+        title: h.title.slice(0, 300),
+        url: h.url,
+        source: new URL(h.url).hostname.replace(/^www\./, '').slice(0, 100),
+        importance: null,
+        summary: h.text.slice(0, 600),
+        positions: 0,
+        publishedAt: now.toISOString(),
+        official: false,
+      }));
+      pool = [...pool, ...items];
+    }
+  }
+
+  const indices = indexMoves((rows ?? []) as { symbol: string; day: string; close: number }[], INDEX_NAMES);
+  const dayLabel = `${weekday}, ${today}, ${KIND_LABEL[kind]}`;
+  const input = wrapUser({ dayLabel, indices, events: upcoming, news: pool });
+
+  if (!long) {
+    const res = await askJson<unknown>(db, budget, {
+      system: wrapSystem(kind, RULES),
+      user: input,
+      maxTokens: 2800,
+      schema: WRAP_SCHEMA as unknown as Record<string, unknown>,
+    });
+    return res.ok ? parseWrap(res.data, pool, false) : null;
+  }
+
+  // Long overview: plan the topics, then write each topic in its own short call (in parallel).
+  const planRes = await askJson<unknown>(db, budget, {
+    system: planSystem(kind, RULES),
+    user: input,
+    maxTokens: 1500,
+    schema: PLAN_SCHEMA as unknown as Record<string, unknown>,
   });
-  return res.ok ? parseWrap(res.data, pool) : null;
+  const plan = planRes.ok ? parsePlan(planRes.data, pool) : null;
+  if (!plan) return null;
+  // Few topics chosen: add the best news the plan left out as one more section, so the read is not cut short.
+  if (plan.topics.length < 6) {
+    const used = new Set(plan.topics.flatMap((t) => t.items.map((n) => n.id)));
+    const rest = pool.filter((n) => !used.has(n.id)).slice(0, 8);
+    if (rest.length >= 4) plan.topics.push({ title: 'Weitere Meldungen', items: rest });
+  }
+  const written = await Promise.all(
+    plan.topics.map((t) =>
+      askJson<{ text: string }>(db, budget, {
+        system: sectionSystem(RULES),
+        user: sectionUser({ dayLabel, title: t.title, indices: /markt|index|börse|aktien|dax/i.test(t.title) ? indices : [], items: t.items }),
+        maxTokens: 900,
+        schema: SECTION_SCHEMA as unknown as Record<string, unknown>,
+      }),
+    ),
+  );
+  const sections = plan.topics.flatMap((t, i) => {
+    const r = written[i];
+    const text = r.ok ? r.data.text?.trim().slice(0, 1800) : '';
+    return text ? [{ title: t.title, text, sources: sectionSources(t.items) }] : [];
+  });
+  if (!sections.length) return null;
+  const wrap: MarketWrap = { headline: plan.headline, points: plan.points, sections, ai: true };
+  return wrap;
 }
 
-async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, budget: number, tz: string): Promise<BriefingContent> {
+async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, budget: number, tz: string, debug: string[]): Promise<BriefingContent> {
   const today = isoDay(parts(now, tz));
   const morningStart = new Date(now.getTime() - (minuteOfDay(parts(now, tz)) - 6 * 60) * 60_000); // 06:00 today
   const since = kind === 'morning' ? new Date(now.getTime() - 16 * 3600_000) : morningStart;
@@ -125,35 +210,15 @@ async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, b
   };
 
   const top = rankNews(news).slice(0, 8);
-  content.wrap = await makeWrap(db, kind, now, budget, tz, news, (events ?? []) as Record<string, unknown>[]);
+  content.wrap = await makeWrap(db, kind, now, budget, tz, news, (events ?? []) as Record<string, unknown>[], debug);
+  const wrap = content.wrap;
+  // "Was bewegt den Markt gerade" and "Treiber des Tages" come from the same AI call as the overview (one call, not three).
   if (kind === 'afternoon' && top.length) {
-    const res = await askJson<{ text: string; source_id: number }>(db, budget, {
-      system: `Schreibe auf Deutsch 1 bis 2 kurze Sätze (höchstens 300 Zeichen): Was bewegt die Märkte heute gerade, laut den gelieferten Meldungen?
-source_id = id der Meldung, die das am besten belegt.
-${RULES}
-Ausnahme zur Sprache: Dieser Überblick ist immer auf Deutsch.`,
-      user: aiInput(top),
-      maxTokens: 800,
-      schema: { type: 'object', additionalProperties: false, required: ['text', 'source_id'], properties: { text: { type: 'string' }, source_id: { type: 'integer' } } },
-    });
-    const src = res.ok ? top.find((n) => n.id === res.data.source_id) : undefined;
-    content.marketNow = res.ok && src ? { text: res.data.text.slice(0, 400), url: src.url, ai: true } : headlineMarketNow(top);
+    const url = wrap?.sections.flatMap((s) => s.sources).find((src) => src.url)?.url;
+    content.marketNow = wrap?.points.length && url ? { text: wrap.points.slice(0, 2).join(' '), url, ai: true } : headlineMarketNow(top);
   }
   if (kind === 'evening' && top.length) {
-    const res = await askJson<{ items: string[] }>(db, budget, {
-      system: `Schreibe auf Deutsch genau 3 kurze Sätze (je höchstens 160 Zeichen): die Treiber des heutigen Börsentags laut den gelieferten Meldungen, wichtigster zuerst.
-${RULES}
-Ausnahme zur Sprache: Dieser Überblick ist immer auf Deutsch.`,
-      user: aiInput(top),
-      maxTokens: 900,
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['items'],
-        properties: { items: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 3 } },
-      },
-    });
-    content.drivers = res.ok && res.data.items.length ? { items: res.data.items.slice(0, 3).map((t) => t.slice(0, 200)), sourcesUrl: '#/news', ai: true } : headlineDrivers(top);
+    content.drivers = wrap?.points.length ? { items: wrap.points, sourcesUrl: '#/news', ai: true } : headlineDrivers(top);
   }
   return content;
 }
@@ -190,7 +255,7 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await db.from('briefings').select('pushed_at').eq('kind', kind).eq('day', today).maybeSingle();
     if (!existing || force) {
-      const content = await generate(db, kind, now, owner, settings.aiBudgetUsdMonth, settings.timeZone);
+      const content = await generate(db, kind, now, owner, settings.aiBudgetUsdMonth, settings.timeZone, done);
       await db.from('briefings').upsert({ kind, day: today, content, created_at: now.toISOString(), pushed_at: existing?.pushed_at ?? null });
       done.push(`${kind}:created`);
     }
