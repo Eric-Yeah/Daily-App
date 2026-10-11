@@ -50,7 +50,7 @@ export function NewsList({ title, items, now }: { title: string; items: NewsItem
               {n.title}
             </h3>
             <p class="news__summary">{n.headlineOnly ? `Nur Überschrift verfügbar. ${n.summary}` : n.summary}</p>
-            {signedIn && canSummarise(n.id) && <NewsDetailBox id={n.id} />}
+            {signedIn && canSummarise(n.id) && <NewsDetailBox id={n.id} initial={n.detail} />}
             <span class="news__foot">
               <span class="muted">
                 {n.source} · {formatAge((now.getTime() - n.publishedAt.getTime()) / 60000)}

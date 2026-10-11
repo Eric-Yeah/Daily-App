@@ -7,7 +7,7 @@ import { formatTime } from '../lib/format';
 import { readingMinutes } from '../lib/readingTime';
 import { buildTraining, type FitnessDay } from '../lib/training';
 import { isoDate, zonedParts } from '../lib/time';
-import { empty, failed, ok, type Block, type DayEntry, type MarketEvent, type NewsItem, type Training } from './types';
+import { empty, failed, ok, type Block, type DayEntry, type MarketEvent, type NewsItem, type StoredNewsDetail, type Training } from './types';
 
 const DAY = 86400000;
 
@@ -32,6 +32,13 @@ interface NewsRow {
   official: boolean;
   news_summaries: { summary: string; importance: number; headline_only: boolean }[] | null;
   news_links: { position_id: string }[] | null;
+  news_details: StoredDetail | StoredDetail[] | null;
+}
+
+interface StoredDetail {
+  status: string;
+  summary: string | null;
+  conclusion: string | null;
 }
 
 export interface LiveNews extends NewsItem {
@@ -41,15 +48,15 @@ export interface LiveNews extends NewsItem {
 }
 
 export async function loadNews(sinceIso: string, limit = 200): Promise<Block<LiveNews[]>> {
-  const { data, error } = await daily()
-    .from('news_items')
-    .select('id,title,url,source,teaser,published_at,topics,official,news_summaries(summary,importance,headline_only),news_links(position_id)')
-    .gte('published_at', sinceIso)
-    .order('published_at', { ascending: false })
-    .limit(limit);
+  const base = 'id,title,url,source,teaser,published_at,topics,official,news_summaries(summary,importance,headline_only),news_links(position_id)';
+  const query = (select: string) =>
+    daily().from('news_items').select(select).gte('published_at', sinceIso).order('published_at', { ascending: false }).limit(limit);
+  // With the longer summaries made earlier; if that query fails, the news still load without them.
+  let { data, error } = await query(`${base},news_details(status,summary,conclusion)`);
+  if (error) ({ data, error } = await query(base));
   if (error) return failed('Meldungen gerade nicht verfügbar.');
   return ok(
-    (data as NewsRow[]).map((r) => {
+    (data as unknown as NewsRow[]).map((r) => {
       const s = r.news_summaries?.[0];
       return {
         id: String(r.id),
@@ -64,6 +71,8 @@ export async function loadNews(sinceIso: string, limit = 200): Promise<Block<Liv
         url: r.url,
         importance: s?.importance ?? null,
         official: r.official,
+        // Longer summaries made earlier ("Ausführlich") stay with the item for as long as it is listed.
+        detail: storedDetail(Array.isArray(r.news_details) ? r.news_details[0] : r.news_details),
       };
     }),
   );
@@ -73,21 +82,34 @@ export type NewsDetail =
   | { status: 'ok'; paragraphs: string[]; minutes: number; conclusion: string | null }
   | { status: 'no_text' | 'short' | 'unreachable' | 'budget' | 'no_key' | 'error' };
 
-/** The longer AI summary (1 to 2 minutes) of one news item; the Edge Function reads the article and caches the result. */
-export async function loadNewsDetail(itemId: string): Promise<NewsDetail> {
-  const { data, error } = await supabase().functions.invoke('daily-news-detail', { body: { itemId: Number(itemId) } });
-  if (error || !data) return { status: 'error' };
-  const status = (data as { status?: string }).status;
-  if (status === 'ok' && typeof data.summary === 'string') {
-    const paragraphs = data.summary.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+/** One answer of the Edge Function (or one stored row) as the app shows it. */
+export function toNewsDetail(status: unknown, summary: unknown, conclusion: unknown): NewsDetail {
+  if (status === 'ok' && typeof summary === 'string' && summary.trim()) {
+    const paragraphs = summary.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
     return {
       status: 'ok',
       paragraphs,
       minutes: readingMinutes('', [{ title: '', text: paragraphs.join(' ') }]),
-      conclusion: typeof data.conclusion === 'string' && data.conclusion.trim() ? data.conclusion.trim() : null,
+      conclusion: typeof conclusion === 'string' && conclusion.trim() ? conclusion.trim() : null,
     };
   }
   return status === 'no_text' || status === 'short' || status === 'unreachable' || status === 'budget' || status === 'no_key' ? { status } : { status: 'error' };
+}
+
+/** A stored row counts only if it is final (summary or "not possible"); anything else is asked for again. */
+export function storedDetail(row: StoredDetail | null | undefined): StoredNewsDetail | undefined {
+  if (!row) return undefined;
+  const d = toNewsDetail(row.status, row.summary, row.conclusion);
+  if (d.status === 'ok') return d;
+  return d.status === 'no_text' || d.status === 'short' ? { status: d.status } : undefined;
+}
+
+/** The longer AI summary (1 to 2 minutes) of one news item; the Edge Function reads the article and caches the result. */
+export async function loadNewsDetail(itemId: string): Promise<NewsDetail> {
+  const { data, error } = await supabase().functions.invoke('daily-news-detail', { body: { itemId: Number(itemId) } });
+  if (error || !data) return { status: 'error' };
+  const d = data as { status?: unknown; summary?: unknown; conclusion?: unknown };
+  return toNewsDetail(d.status, d.summary, d.conclusion);
 }
 
 export type WrapKind = 'morning' | 'afternoon' | 'evening';

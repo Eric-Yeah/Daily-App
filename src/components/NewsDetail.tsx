@@ -2,15 +2,23 @@ import { useState } from 'preact/hooks';
 import { loadNewsDetail, type NewsDetail } from '../data/live';
 import { detailIsFinal, detailMessage } from '../lib/newsDetail';
 
+// Final results of this session, so a list that is rebuilt (tab change, reload) shows them at once.
+// The lasting copy is on the server and comes back with the news.
+const seen = new Map<string, NewsDetail>();
+
 /** "Ausführlich": the longer AI summary (1 to 2 minutes) of one news item, created on tap and then cached. */
-export function NewsDetailBox({ id }: { id: string }) {
-  const [phase, setPhase] = useState<'idle' | 'loading' | 'done'>('idle');
-  const [detail, setDetail] = useState<NewsDetail>();
-  const [open, setOpen] = useState(true);
+export function NewsDetailBox({ id, initial }: { id: string; initial?: NewsDetail }) {
+  const known = initial ?? seen.get(id);
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'done'>(known ? 'done' : 'idle');
+  const [detail, setDetail] = useState<NewsDetail | undefined>(known);
+  // Fresh result: open. One that was made earlier: collapsed, a tap opens it.
+  const [open, setOpen] = useState(false);
 
   const start = async () => {
     setPhase('loading');
-    setDetail(await loadNewsDetail(id));
+    const d = await loadNewsDetail(id);
+    if (d.status === 'ok' || detailIsFinal(d.status)) seen.set(id, d);
+    setDetail(d);
     setOpen(true);
     setPhase('done');
   };

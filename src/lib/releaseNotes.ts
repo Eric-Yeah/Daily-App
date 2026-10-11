@@ -9,6 +9,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.10.1',
+    date: '2026-10-11',
+    title: 'Ausführliche News bleiben stehen',
+    notes: [
+      'Behoben: Eine ausführliche Zusammenfassung war nach Tabwechsel oder Neuladen scheinbar weg und musste neu angefordert werden. Sie war gespeichert, die App hat sie nur nicht angezeigt.',
+      'Jetzt kommt sie mit der Meldung zurück (eingeklappt, ein Tipp öffnet sie) und bleibt, solange die Meldung in der Liste steht, also bis zu 48 Stunden. Ein erneuter Abruf kostet nichts.',
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-10-11',
     title: 'Fazit zu jeder ausführlichen News',

@@ -49,7 +49,13 @@ export interface NewsItem {
   source: string;
   publishedAt: Date;
   url: string;
+  /** Longer AI summary already made for this item (stored for as long as the item is listed). */
+  detail?: StoredNewsDetail;
 }
+
+export type StoredNewsDetail =
+  | { status: 'ok'; paragraphs: string[]; minutes: number; conclusion: string | null }
+  | { status: 'no_text' | 'short' };
 
 export interface AlertItem {
   name: string;
