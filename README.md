@@ -20,6 +20,8 @@ Deine persönliche Tages-App (PWA, iPhone zuerst, läuft auch am Mac): **Morgen*
 | M7 | Overload und Study App | **fertig** (Training ohne Plan) |
 | M8 | Feinschliff, Passkey-Login | **fertig** (Passkey einmal im Dashboard einschalten, Supabase-Beta) |
 
+**Vorlesen:** Unter „Heute“ liest die Taste „Briefing anhören“ das Morgen-, Nachmittags- oder Abendbriefing vor (Marktüberblick, Depot, Meldungen, Termine, Training). Es nutzt die Sprachausgabe des Geräts (Web Speech API), also kostenlos und ohne Server; Stimme und Tempo unter Mehr → Vorlesen. Bei gesperrtem Bildschirm kann iOS das Vorlesen anhalten, deshalb hält Daily den Bildschirm währenddessen an.
+
 Beispieldaten gibt es nur noch, solange du **keine Positionen** angelegt hast. Dann steht oben „Beispieldaten · keine echten Kurse“; unter **Mehr → Beispieldaten anzeigen** schaltest du sie aus. Sobald Positionen da sind, ist alles echt: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Kurse, Indizes und US-Markt, Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App. Das Wetter fehlt noch.
 
 ## Lokal starten

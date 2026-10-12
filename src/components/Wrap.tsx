@@ -8,20 +8,23 @@ import { getSettings } from '../lib/settings';
 import { readingMinutes } from '../lib/readingTime';
 import { useCollapsed } from '../lib/collapsed';
 import { FoldHead } from './Fold';
+import { ListenButton } from './Listen';
+import { wrapSegments } from '../lib/briefingScript';
 import { isoDate, zonedParts } from '../lib/time';
 import { safeHref } from '../lib/safeUrl';
 
 const KIND_LABEL: Record<WrapKind, string> = { morning: 'Morgen', afternoon: 'Mittag', evening: 'Abend' };
-/**
- * The AI-written market overview. With `kind` it shows that overview of today (Morgen, Nachmittag, Abend),
- * without it the newest one. It starts open; folding it (tap on the label line) shows only the headline and is
- * remembered on this device until it is opened again. Hidden while loading, when nothing was written yet and
- * when signed out.
- */
-export function WrapCard({ kind }: { kind?: WrapKind }) {
+
+/** What a self-loading card has so far: `pending` while a signed-in load is still running (nothing to wait for when signed out). */
+export interface Loaded<T> {
+  block: Block<T> | undefined;
+  pending: boolean;
+}
+
+/** The market overview of today (or the newest one without `kind`), refreshed every ten minutes. */
+export function useWrap(kind?: WrapKind): Loaded<LiveWrap> {
   const now = useNow(60_000);
   const [block, setBlock] = useState<Block<LiveWrap>>();
-  const [collapsed, setCollapsed] = useCollapsed('wrap');
   const signedIn = !!currentSession();
 
   useEffect(() => {
@@ -32,6 +35,38 @@ export function WrapCard({ kind }: { kind?: WrapKind }) {
       alive = false;
     };
   }, [signedIn, kind, Math.floor(now.getTime() / 600000)]);
+
+  return { block, pending: signedIn && !block };
+}
+
+/** The afternoon live blog: today's entries, newest first, refreshed every two minutes. */
+export function useLiveBlog(): Loaded<LiveBlogEntry[]> {
+  const now = useNow(60_000);
+  const [block, setBlock] = useState<Block<LiveBlogEntry[]>>();
+  const signedIn = !!currentSession();
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let alive = true;
+    loadLiveBlog(new Date()).then((b) => alive && setBlock(b));
+    return () => {
+      alive = false;
+    };
+  }, [signedIn, Math.floor(now.getTime() / 120000)]);
+
+  return { block, pending: signedIn && !block };
+}
+
+/**
+ * The AI-written market overview. With `kind` it shows that overview of today (Morgen, Nachmittag, Abend),
+ * without it the newest one. It starts open; folding it (tap on the label line) shows only the headline and is
+ * remembered on this device until it is opened again. Hidden while loading, when nothing was written yet and
+ * when signed out.
+ */
+export function WrapCard({ kind }: { kind?: WrapKind }) {
+  const now = useNow(60_000);
+  const { block } = useWrap(kind);
+  const [collapsed, setCollapsed] = useCollapsed('wrap');
 
   if (block?.status !== 'ok') return null;
   const w = block.data;
@@ -50,6 +85,7 @@ export function WrapCard({ kind }: { kind?: WrapKind }) {
       <h2 class="wrap__headline">{w.headline}</h2>
       {!collapsed && (
         <>
+          {!kind && <ListenButton id="wrap" title="Marktüberblick" script={wrapSegments(w)} pending={false} secondary />}
           {w.sections.map((s) => (
             <div key={s.title} class="wrap__section">
               <h3>{s.title}</h3>
@@ -72,21 +108,10 @@ export function WrapCard({ kind }: { kind?: WrapKind }) {
   );
 }
 
-/** The afternoon live blog: today's entries, newest first, refreshed every two minutes. */
+/** The afternoon live blog card. */
 export function LiveBlogCard() {
-  const now = useNow(60_000);
-  const [block, setBlock] = useState<Block<LiveBlogEntry[]>>();
+  const { block } = useLiveBlog();
   const [collapsed, setCollapsed] = useCollapsed('liveblog');
-  const signedIn = !!currentSession();
-
-  useEffect(() => {
-    if (!signedIn) return;
-    let alive = true;
-    loadLiveBlog(new Date()).then((b) => alive && setBlock(b));
-    return () => {
-      alive = false;
-    };
-  }, [signedIn, Math.floor(now.getTime() / 120000)]);
 
   if (!block) return null;
   const tz = getSettings().timeZone;

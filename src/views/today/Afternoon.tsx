@@ -1,10 +1,12 @@
 import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { Header, useGreeting } from '../../components/Header';
-import { MarketOpenCard } from '../../components/MarketOpen';
-import { LiveBlogCard } from '../../components/Wrap';
+import { ListenButton } from '../../components/Listen';
+import { MarketOpenCard, useMarketOpen } from '../../components/MarketOpen';
+import { LiveBlogCard, useLiveBlog } from '../../components/Wrap';
 import { Axis, ChangeTiles, DepotHeadline, ExternalLink, IndexStrip, IntradayChart, MissingNote } from '../../components/Market';
 import type { DataSource } from '../../data/types';
+import { afternoonScript, okData } from '../../lib/briefingScript';
 import { formatDateLong, formatDuration, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { lastClosedTradingDay, minutesUntil, usSessionInZone, xetraStatus, type MarketStatus } from '../../lib/time';
@@ -24,11 +26,19 @@ export function marketPill(status: MarketStatus): string {
 }
 
 export function Afternoon({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
-  const { timeZone, tradingEnd } = useSettings();
+  const { timeZone, tradingEnd, displayName, hideAmounts } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
   const view = useViewData('afternoon', () => source.afternoon(now), [source, minuteKey]);
   const data = view.data;
   const title = useGreeting('Guten Nachmittag', false);
+  const open = useMarketOpen();
+  const live = useLiveBlog();
+  const script = afternoonScript(
+    data,
+    { wrap: null, open: okData(open.block), liveBlog: okData(live.block) },
+    { now, timeZone, name: displayName, hideAmounts },
+    'Guten Nachmittag',
+  );
   const status = xetraStatus(now, { tradingEnd });
   const us = usSessionInZone(now, timeZone);
   const toUsOpen = minutesUntil(now, us.open, timeZone);
@@ -38,6 +48,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
       <ViewState view={view}>
+      <ListenButton id="afternoon" title="Nachmittagsbriefing" script={script} pending={!data || open.pending || live.pending} />
 
       <MarketOpenCard />
 

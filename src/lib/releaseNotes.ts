@@ -9,6 +9,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.15.0',
+    date: '2026-10-12',
+    title: 'Briefings anhören',
+    notes: [
+      'Neu: Morgen-, Nachmittags- und Abendbriefing lassen sich vorlesen. Oben unter „Heute“ steht die Taste „Briefing anhören“ mit der ungefähren Dauer. Vorgelesen werden Marktüberblick, Marktstart, Depot, Meldungen, Termine, Training und Dein Tag, je nach Tageszeit. Im Tab „News“ gibt es die Taste auch für den Marktüberblick allein.',
+      'Unten über der Tab-Leiste läuft ein kleiner Player mit Pause, Weiter und Sprung zum nächsten oder vorigen Abschnitt. Er bleibt sichtbar, wenn du den Tab wechselst.',
+      'Ist „Beträge ausblenden“ an, liest Daily keine Euro-Beträge vor, nur Prozente. Sperrt die Face-ID-Sperre die App, stoppt das Vorlesen.',
+      'Stimme und Tempo stellst du unter Mehr → Vorlesen ein, dort gibt es auch eine Probe. Die Stimme kommt von deinem Gerät, es wird nichts übertragen und es kostet nichts.',
+      'Wichtig am iPhone: Während des Vorlesens bleibt der Bildschirm an. Wird er trotzdem gesperrt oder wechselst du die App, kann iOS die Sprachausgabe anhalten. Beim Zurückkommen geht es an der Stelle weiter.',
+    ],
+  },
+  {
     version: '0.14.2',
     date: '2026-10-12',
     title: 'Indexleiste gefüllt und laufend',

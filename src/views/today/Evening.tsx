@@ -1,10 +1,12 @@
 import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { CloseDayCard, NewsList } from '../../components/Content';
+import { ListenButton } from '../../components/Listen';
 import { Header, useGreeting } from '../../components/Header';
-import { WrapCard } from '../../components/Wrap';
+import { useWrap, WrapCard } from '../../components/Wrap';
 import { Axis, DepotHeadline, EventList, ExternalLink, GroupBars, IntradayChart, KpiTiles, MissingNote, NumberedCard, UsMiniChart } from '../../components/Market';
 import { empty, type DataSource } from '../../data/types';
+import { eveningScript, okData } from '../../lib/briefingScript';
 import { formatDateLong, formatPct, formatTime, formatWeekday, trend } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { xetraStatus } from '../../lib/time';
@@ -13,11 +15,13 @@ import { marketPill } from './Afternoon';
 import { useViewData, ViewState } from './Today';
 
 export function Evening({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
-  const { timeZone, tradingEnd } = useSettings();
+  const { timeZone, tradingEnd, displayName, hideAmounts } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
   const view = useViewData('evening', () => source.evening(now), [source, minuteKey]);
   const data = view.data;
   const title = useGreeting('Guten Abend');
+  const wrap = useWrap('evening');
+  const script = eveningScript(data, { wrap: okData(wrap.block), open: null, liveBlog: null }, { now, timeZone, name: displayName, hideAmounts }, 'Guten Abend');
   const status = xetraStatus(now, { tradingEnd });
 
   return (
@@ -25,6 +29,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
       <Header dateLine={`${formatDateLong(now, timeZone)} · ${formatTime(now, timeZone)}`} title={title} pill={marketPill(status)} />
       {switcher}
       <ViewState view={view}>
+      <ListenButton id="evening" title="Abendbriefing" script={script} pending={!data || wrap.pending} />
 
       <WrapCard kind="evening" />
 

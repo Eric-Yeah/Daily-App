@@ -1788,6 +1788,94 @@ a.button--secondary:hover {
   white-space: nowrap;
 }
 
+/* ---------- Read aloud ---------- */
+.listen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.listen__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 15px;
+}
+.listen__button svg {
+  flex: none;
+}
+.speechbar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--tabbar-height);
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  z-index: 11;
+  background: var(--card);
+  border-top: 1px solid var(--divider);
+  padding: 8px calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
+}
+.speechbar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.speechbar__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+.speechbar__text strong {
+  font-size: 14px;
+}
+.speechbar__text span {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.speechbar__controls {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+.speechbar .icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
+.speechbar .icon-button--main {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+.speechbar__progress {
+  height: 3px;
+  margin: 0 calc(-12px - env(safe-area-inset-right)) 0 calc(-12px - env(safe-area-inset-left));
+  background: var(--divider);
+}
+.speechbar__progress div {
+  height: 100%;
+  background: var(--link);
+  transition: width 0.3s ease;
+}
+.app--speaking .page {
+  padding-bottom: calc(20px + var(--tabbar-height) + 72px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .speechbar__progress div {
+    transition: none;
+  }
+}
+
 /* ---------- Mouse and trackpad (Mac): hover feedback, only where a real pointer exists ---------- */
 @media (hover: hover) {
   .button:not(:disabled):hover,
@@ -1806,6 +1894,11 @@ a.button--secondary:hover {
 
 /* ---------- Tablet portrait / narrow window (481–899 px): tab bar spans the window, items stay centred ---------- */
 @media (min-width: 481px) and (max-width: 899px) {
+  .speechbar {
+    left: 0;
+    transform: none;
+    max-width: none;
+  }
   .tabbar {
     left: 0;
     transform: none;

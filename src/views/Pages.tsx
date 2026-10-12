@@ -8,6 +8,7 @@ import { disableLock, lockEnabled, lockErrorText, webAuthnLock } from '../lib/lo
 import { aiSpentThisMonth, disablePush, enablePush, pushState, sendTestPush, type PushState } from '../lib/push';
 import { isClockPinned } from '../lib/clock';
 import { updateSettings, useSettings } from '../lib/settings';
+import { getPrefs, RATES, setPrefs, speakSample, speechSupported, stopSpeech, useSpeech, useVoices } from '../lib/speech';
 import { parseHHMM } from '../lib/time';
 
 export const DISCLAIMER =
@@ -53,6 +54,7 @@ export function MorePage() {
 
       <SecuritySection />
       <NotificationsSection />
+      <SpeechSection />
       <AiSection />
 
       <section class="card gap-8">
@@ -267,6 +269,60 @@ function SecuritySection() {
         </div>
       </section>
     </>
+  );
+}
+
+const RATE_LABEL: Record<number, string> = { 0.8: 'Langsam', 0.9: 'Etwas langsamer', 1: 'Normal', 1.1: 'Etwas schneller', 1.25: 'Schnell', 1.5: 'Sehr schnell' };
+
+/** Voice and speed for "Briefing anhören". Stored on this device only: the voices differ from device to device. */
+function SpeechSection() {
+  const voices = useVoices();
+  const speech = useSpeech();
+  const [prefs, setLocal] = useState(getPrefs);
+  if (!speechSupported()) return null;
+  const change = (patch: Partial<typeof prefs>) => {
+    setPrefs(patch);
+    setLocal(getPrefs());
+  };
+  const sampling = speech.id === 'sample' && speech.status !== 'idle';
+  const selected = voices.find((v) => v.voiceURI === prefs.voiceURI)?.voiceURI ?? '';
+  return (
+    <section class="card gap-8">
+      <h2>Vorlesen</h2>
+      <p class="setting__hint">
+        Die Briefings lassen sich anhören (Taste „Briefing anhören“ unter „Heute“). Die Stimme kommt von deinem Gerät, es wird nichts übertragen.
+        Während des Vorlesens hält Daily den Bildschirm an, denn bei gesperrtem Bildschirm kann das System die Sprachausgabe stoppen.
+      </p>
+      {voices.length > 0 && (
+        <label class="setting">
+          <span>Stimme</span>
+          <select class="input" value={selected} onChange={(e) => change({ voiceURI: e.currentTarget.value || null })}>
+            <option value="">Automatisch</option>
+            {voices.map((v) => (
+              <option key={v.voiceURI} value={v.voiceURI}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label class="setting">
+        <span>Tempo</span>
+        <select class="input" value={String(prefs.rate)} onChange={(e) => change({ rate: Number(e.currentTarget.value) })}>
+          {RATES.map((r) => (
+            <option key={r} value={String(r)}>
+              {RATE_LABEL[r]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {voices.length > 0 && (
+        <p class="setting__hint">Am iPhone gibt es bessere Stimmen unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen. Ob sie hier erscheinen, entscheidet das Gerät.</p>
+      )}
+      <button class="button button--secondary button--wide" type="button" onClick={sampling ? stopSpeech : speakSample}>
+        {sampling ? 'Stopp' : 'Probe anhören'}
+      </button>
+    </section>
   );
 }
 

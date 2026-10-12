@@ -2,20 +2,30 @@ import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { AlertCard, DayCard, NewsList, TaskCard, TrainingCard } from '../../components/Content';
 import { Header, useGreeting } from '../../components/Header';
-import { MarketOpenCard } from '../../components/MarketOpen';
-import { WrapCard } from '../../components/Wrap';
+import { ListenButton } from '../../components/Listen';
+import { MarketOpenCard, useMarketOpen } from '../../components/MarketOpen';
+import { useWrap, WrapCard } from '../../components/Wrap';
 import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, MissingNote, NumberedCard, Sparkline } from '../../components/Market';
 import type { DataSource } from '../../data/types';
+import { morningScript, okData } from '../../lib/briefingScript';
 import { formatDateLong, formatNumber, formatWeekday } from '../../lib/format';
 import { useSettings } from '../../lib/settings';
 import { useViewData, ViewState } from './Today';
 
 export function Morning({ source, now, switcher }: { source: DataSource; now: Date; switcher: JSX.Element }) {
-  const { timeZone } = useSettings();
+  const { timeZone, displayName, hideAmounts } = useSettings();
   const minuteKey = Math.floor(now.getTime() / 60000);
   const view = useViewData('morning', () => source.morning(now), [source, minuteKey]);
   const data = view.data;
   const title = useGreeting('Guten Morgen');
+  const wrap = useWrap('morning');
+  const open = useMarketOpen();
+  const script = morningScript(
+    data,
+    { wrap: okData(wrap.block), open: okData(open.block), liveBlog: null },
+    { now, timeZone, name: displayName, hideAmounts },
+    'Guten Morgen',
+  );
   const weather = data?.weather.status === 'ok' ? data.weather.data : null;
 
   return (
@@ -27,6 +37,7 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
       />
       {switcher}
       <ViewState view={view}>
+      <ListenButton id="morning" title="Morgenbriefing" script={script} pending={!data || wrap.pending || open.pending} />
 
       <BlockView block={data?.indices} skeletonHeight={60} hideWhenEmpty>
         {(items) => <IndexStrip items={items} />}

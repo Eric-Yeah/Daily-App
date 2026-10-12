@@ -43,12 +43,8 @@ function Movers({ title, items }: { title: string; items: OpenMover[] }) {
   );
 }
 
-/**
- * "Marktstart": the short update shortly after Xetra opens (about 09:30) with the index moves, the biggest winners and
- * losers among large German shares and, where the news explain it, why. Starts open; folding it (tap on the label line)
- * keeps only the headline and is remembered on this device. Hidden until it was written and when signed out.
- */
-export function MarketOpenCard() {
+/** The market start update of today, refreshed every five minutes; `pending` while a signed-in load is running. */
+export function useMarketOpen(): { block: Block<LiveMarketOpen> | undefined; pending: boolean } {
   const now = useNow(60_000);
   const [block, setBlock] = useState<Block<LiveMarketOpen>>();
   const signedIn = !!currentSession();
@@ -62,6 +58,16 @@ export function MarketOpenCard() {
     };
   }, [signedIn, Math.floor(now.getTime() / 300000)]);
 
+  return { block, pending: signedIn && !block };
+}
+
+/**
+ * "Marktstart": the short update shortly after Xetra opens (about 09:30) with the index moves, the biggest winners and
+ * losers among large German shares and, where the news explain it, why. Starts open; folding it (tap on the label line)
+ * keeps only the headline and is remembered on this device. Hidden until it was written and when signed out.
+ */
+export function MarketOpenCard() {
+  const { block } = useMarketOpen();
   if (block?.status !== 'ok') return null;
   return <MarketOpenView m={block.data} />;
 }
