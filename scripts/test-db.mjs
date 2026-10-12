@@ -412,6 +412,100 @@ await test('Ausführlich: Fazit ist begrenzt', () =>
   as('service_role', null, () => rejects(db.query('update daily.news_details set conclusion = $1', ['x'.repeat(601)]), /check constraint/)),
 );
 
+// --- Systematic attack checks over EVERY table and function in "daily" (also catches tables added later) ---
+// Tables the owner may write from the app; everything else is written by the server (service_role) only.
+const APP_WRITABLE = new Set(['settings', 'tasks', 'day_notes', 'groups', 'positions', 'push_subscriptions']);
+// Functions a signed-in user may call; all others are for the server only.
+const APP_CALLABLE = new Set(['is_owner']);
+const tables = (await db.query("select tablename from pg_tables where schemaname = 'daily' order by tablename")).rows.map((r) => r.tablename);
+
+await test('Angriff: jede Tabelle hat Row Level Security', async () => {
+  const r = await db.query("select relname from pg_class where relnamespace = 'daily'::regnamespace and relkind in ('r', 'p') and not relrowsecurity");
+  assert.deepEqual(r.rows.map((x) => x.relname), []);
+  // No views or materialized views: they would bypass RLS of the tables underneath.
+  const v = await db.query("select relname from pg_class where relnamespace = 'daily'::regnamespace and relkind in ('v', 'm')");
+  assert.deepEqual(v.rows.map((x) => x.relname), []);
+});
+
+await test('Angriff: ohne Anmeldung (anon) kein Zugriff auf das Schema und keine Rechte auf irgendeiner Tabelle', async () => {
+  assert.equal((await db.query("select has_schema_privilege('anon', 'daily', 'USAGE') as u")).rows[0].u, false);
+  for (const t of tables) {
+    for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) {
+      const r = await db.query('select has_table_privilege($1, $2, $3) as ok', ['anon', `daily.${t}`, priv]);
+      assert.equal(r.rows[0].ok, false, `anon hat ${priv} auf daily.${t}`);
+    }
+    await as('anon', null, () => rejects(db.query(`select * from daily.${t}`), /permission denied/, `anon liest daily.${t}`));
+  }
+});
+
+await test('Angriff: angemeldete Konten schreiben nur in die erlaubten Tabellen, nie TRUNCATE', async () => {
+  for (const t of tables) {
+    for (const priv of ['INSERT', 'UPDATE', 'DELETE']) {
+      const r = await db.query('select has_table_privilege($1, $2, $3) as ok', ['authenticated', `daily.${t}`, priv]);
+      // push_subscriptions has no UPDATE on purpose (delete and insert instead).
+      const allowed = APP_WRITABLE.has(t) && !(t === 'push_subscriptions' && priv === 'UPDATE');
+      assert.equal(r.rows[0].ok, allowed, `authenticated ${priv} auf daily.${t}`);
+    }
+    for (const priv of ['TRUNCATE', 'REFERENCES', 'TRIGGER']) {
+      const r = await db.query('select has_table_privilege($1, $2, $3) as ok', ['authenticated', `daily.${t}`, priv]);
+      assert.equal(r.rows[0].ok, false, `authenticated ${priv} auf daily.${t}`);
+    }
+  }
+});
+
+await test('Angriff: selbst registriertes fremdes Konto liest, ändert und löscht in keiner Tabelle etwas', async () => {
+  for (const t of tables) {
+    const cols = (await db.query("select column_name from information_schema.columns where table_schema = 'daily' and table_name = $1 and is_identity = 'NO' and is_generated = 'NEVER' order by ordinal_position", [t])).rows;
+    // Reading: no rows, or no permission at all (columns like push_keys.private_jwk).
+    await as('authenticated', OTHER, async () => {
+      try {
+        assert.equal((await db.query(`select * from daily.${t}`)).rowCount, 0, `fremdes Konto liest daily.${t}`);
+      } catch (e) {
+        assert.match(e.message, /permission denied/, `daily.${t}`);
+      }
+    });
+    for (const sql of [`update daily.${t} set ${cols[0].column_name} = ${cols[0].column_name}`, `delete from daily.${t}`]) {
+      await as('authenticated', OTHER, async () => {
+        try {
+          assert.equal((await db.query(sql)).rowCount, 0, `fremdes Konto: ${sql}`);
+        } catch (e) {
+          assert.match(e.message, /permission denied|row-level security/, sql);
+        }
+      });
+    }
+  }
+});
+
+await test('Angriff: Funktionen nur für den Server, mit festem search_path', async () => {
+  const fns = (
+    await db.query(
+      "select p.oid, p.proname, p.prosecdef, p.proconfig from pg_proc p where p.pronamespace = 'daily'::regnamespace order by p.proname",
+    )
+  ).rows;
+  assert.ok(fns.length >= 3);
+  for (const f of fns) {
+    for (const role of ['anon', 'public']) {
+      const r = await db.query(
+        role === 'public'
+          ? "select exists (select 1 from pg_proc, aclexplode(coalesce(proacl, acldefault('f', proowner))) a where oid = $1 and a.grantee = 0 and a.privilege_type = 'EXECUTE') as ok"
+          : "select has_function_privilege('anon', $1::oid, 'EXECUTE') as ok",
+        [f.oid],
+      );
+      assert.equal(r.rows[0].ok, false, `${role} darf daily.${f.proname}() aufrufen`);
+    }
+    const auth = (await db.query("select has_function_privilege('authenticated', $1::oid, 'EXECUTE') as ok", [f.oid])).rows[0].ok;
+    assert.equal(auth, APP_CALLABLE.has(f.proname), `authenticated darf daily.${f.proname}() aufrufen`);
+    // SECURITY DEFINER runs with the owner's rights: an unset search_path would let a caller swap in own objects.
+    if (f.prosecdef) assert.ok((f.proconfig ?? []).some((c) => c.startsWith('search_path=')), `daily.${f.proname}() ohne search_path`);
+  }
+});
+
+await test('Angriff: fremdes Konto ist kein Besitzer, auch nicht über is_owner()', () =>
+  as('authenticated', OTHER, async () => {
+    assert.equal((await db.query('select daily.is_owner() as ok')).rows[0].ok, false);
+  }),
+);
+
 await test('Migrationsstand wird festgehalten', async () => {
   const r = await db.query('select version from daily.schema_migrations order by version');
   assert.deepEqual(

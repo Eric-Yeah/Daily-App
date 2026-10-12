@@ -3,6 +3,7 @@ import type { DepotSummary, GroupMove, IndexQuote, IntradaySeries, Kpi, MarketEv
 import { sessionChart, sparkline } from '../lib/chart';
 import { formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
 import { useSettings } from '../lib/settings';
+import { safeHref } from '../lib/safeUrl';
 
 /** A percent change: shown with sign (and arrow), read out as words, so the direction is not only a colour. */
 function Pct({ value, decimals = 1, withArrow = false }: { value: number | null; decimals?: number; withArrow?: boolean }) {
@@ -239,7 +240,7 @@ export function NumberedCard({ title, items, children }: { title: string; items:
 
 export function ExternalLink({ href, children, class: className = 'link-strong' }: { href: string; children: ComponentChildren; class?: string }) {
   return (
-    <a class={className} href={href} target="_blank" rel="noopener noreferrer">
+    <a class={className} href={safeHref(href)} target="_blank" rel="noopener noreferrer">
       {children}
     </a>
   );

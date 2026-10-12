@@ -9,6 +9,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.12.1',
+    date: '2026-10-12',
+    title: 'Sicherheitsprüfung',
+    notes: [
+      'Daily wurde komplett auf Sicherheitslücken geprüft: Datenbank, Server-Funktionen, App und Repository. Ohne deine Anmeldung kommt niemand an deine Daten, auch nicht mit einem eigenen Konto im Projekt der Study App.',
+      'Links aus Meldungen und Briefings öffnet Daily nur noch, wenn es normale Webadressen sind.',
+      'Daily startet nicht mehr, wenn eine fremde Seite es unsichtbar einbettet (Schutz gegen untergeschobene Klicks).',
+      'Beim Laden eines Artikels für „Ausführlich“ prüft der Server jetzt jede Weiterleitung einzeln.',
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-10-12',
     title: 'Marktstart-Update und aufgeräumte News',

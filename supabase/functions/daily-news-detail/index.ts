@@ -16,14 +16,28 @@ import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 
 const UA = 'DailyApp/1.0 (+https://eric-yeah.github.io/Daily-App/)';
 
+const MAX_REDIRECTS = 5;
+
 async function fetchPage(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'de,en;q=0.8' },
-      signal: AbortSignal.timeout(15_000),
-    });
-    // A redirect must not lead somewhere we would not fetch directly.
-    if (!res.ok || !isFetchableUrl(res.url)) return null;
+    const signal = AbortSignal.timeout(15_000);
+    // Redirects are followed by hand so that every hop, not only the last one, must be a public https page.
+    let res: Response | null = null;
+    let next = url;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      if (!isFetchableUrl(next)) return null;
+      res = await fetch(next, {
+        headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'de,en;q=0.8' },
+        redirect: 'manual',
+        signal,
+      });
+      const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null;
+      if (!location) break;
+      await res.body?.cancel();
+      next = new URL(location, next).href;
+      res = null;
+    }
+    if (!res || !res.ok) return null;
     if (!/html/i.test(res.headers.get('content-type') ?? '')) return null;
     const text = await res.text();
     return text.length > 3_000_000 ? text.slice(0, 3_000_000) : text;

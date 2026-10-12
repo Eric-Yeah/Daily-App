@@ -7,6 +7,7 @@ import { formatTime, formatWeekday } from '../lib/format';
 import { getSettings } from '../lib/settings';
 import { readingMinutes } from '../lib/readingTime';
 import { isoDate, zonedParts } from '../lib/time';
+import { safeHref } from '../lib/safeUrl';
 
 const KIND_LABEL: Record<WrapKind, string> = { morning: 'Morgen', afternoon: 'Mittag', evening: 'Abend' };
 /**
@@ -69,7 +70,7 @@ export function WrapCard({ kind }: { kind?: WrapKind }) {
               {s.sources.length > 0 && (
                 <p class="wrap__sources">
                   {s.sources.map((src) => (
-                    <a key={src.url} href={src.url} target="_blank" rel="noopener noreferrer">
+                    <a key={src.url} href={safeHref(src.url)} target="_blank" rel="noopener noreferrer">
                       {src.name} ↗
                     </a>
                   ))}
@@ -128,7 +129,7 @@ export function LiveBlogCard() {
               {e.sources.length > 0 && (
                 <p class="wrap__sources">
                   {e.sources.map((src) => (
-                    <a key={src.url} href={src.url} target="_blank" rel="noopener noreferrer">
+                    <a key={src.url} href={safeHref(src.url)} target="_blank" rel="noopener noreferrer">
                       {src.name} ↗
                     </a>
                   ))}

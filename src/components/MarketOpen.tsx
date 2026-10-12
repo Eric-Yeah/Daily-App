@@ -6,6 +6,7 @@ import { useNow } from '../lib/clock';
 import { formatPct, formatTime, spokenPct, trend } from '../lib/format';
 import { getSettings } from '../lib/settings';
 import { ChangeTiles } from './Market';
+import { safeHref } from '../lib/safeUrl';
 
 function Movers({ title, items }: { title: string; items: OpenMover[] }) {
   if (!items.length) return null;
@@ -26,7 +27,7 @@ function Movers({ title, items }: { title: string; items: OpenMover[] }) {
                 {m.source && (
                   <>
                     {' '}
-                    <a href={m.source.url} target="_blank" rel="noopener noreferrer">
+                    <a href={safeHref(m.source.url)} target="_blank" rel="noopener noreferrer">
                       {m.source.name} ↗
                     </a>
                   </>

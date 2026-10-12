@@ -7,6 +7,7 @@ import { useResync } from '../lib/resync';
 import { InlineState } from './Block';
 import { ExternalLink } from './Market';
 import { NewsDetailBox } from './NewsDetail';
+import { safeHref } from '../lib/safeUrl';
 
 // News texts are always rendered as plain text (JSX escapes), never as HTML.
 
@@ -55,7 +56,7 @@ export function NewsList({ title, items, now }: { title: string; items: NewsItem
               <span class="muted">
                 {n.source} · {formatAge((now.getTime() - n.publishedAt.getTime()) / 60000)}
               </span>
-              <a href={n.url} target="_blank" rel="noopener noreferrer">
+              <a href={safeHref(n.url)} target="_blank" rel="noopener noreferrer">
                 Original ↗<span class="visually-hidden"> ({n.source})</span>
               </a>
             </span>
