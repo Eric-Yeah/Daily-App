@@ -1436,6 +1436,34 @@ a.button--secondary:hover {
   gap: 4px 12px;
   font-size: 13px;
 }
+.fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fold__chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.fold__chevron--closed {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold__chevron {
+    transition: none;
+  }
+}
 .wrap__note {
   font-size: 12px;
   line-height: 17px;

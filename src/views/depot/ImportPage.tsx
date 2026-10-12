@@ -4,7 +4,8 @@ import { Header } from '../../components/Header';
 import { useDepot, type Group, type ImportResult } from '../../data/depot';
 import { buildImport, decodeBytes, detectDelimiter, findHeaderRow, guessMapping, parseCsv, type Field, type Mapping } from '../../lib/csv';
 import { formatEuro, formatQuantity } from '../../lib/format';
-import { suggestGroupName, suggestTopics } from '../../lib/topics';
+import { cleanTopics, suggestGroupName, suggestTopics } from '../../lib/topics';
+import { suggestTopicsAi } from '../../lib/topicsAi';
 
 const FIELDS: { key: Field; label: string; hint?: string }[] = [
   { key: 'name', label: 'Name' },
@@ -63,8 +64,9 @@ export function ImportPage() {
     setDecimal(sample.some((v) => /\d,\d/.test(v)) || !sample.some((v) => /\d\.\d{1,2}$/.test(v)) ? ',' : '.');
   };
 
-  const assign = (name: string): { groupId: string | null; topics: string[] } => {
-    const topics = suggestTopics(name);
+  // aiTopics: AI suggestions by lower-case name (empty if the AI was not available); rule-based ones always apply
+  const assign = (name: string, aiTopics: Map<string, string[]>): { groupId: string | null; topics: string[] } => {
+    const topics = cleanTopics([...suggestTopics(name), ...(aiTopics.get(name.trim().toLowerCase()) ?? [])]);
     if (groupMode === 'auto') {
       const g = suggestGroupName(topics);
       return { groupId: groups.find((x: Group) => x.name === g)?.id ?? null, topics };
@@ -82,7 +84,11 @@ export function ImportPage() {
 
   const run = async () => {
     setBusy(true);
-    const r = await store.importItems(items, duplicates, (i) => assign(i.name));
+    // New positions get topics from the name; the AI is asked once for all of them (a failure only means fewer topics).
+    const names = items.filter((i) => i.status === 'new').map((i) => i.name);
+    const ai = await suggestTopicsAi(names);
+    const aiTopics = new Map(names.map((n, i) => [n.trim().toLowerCase(), ai[i]]));
+    const r = await store.importItems(items, duplicates, (i) => assign(i.name, aiTopics));
     setBusy(false);
     if (typeof r === 'string') setError(r);
     else {
@@ -113,6 +119,7 @@ export function ImportPage() {
           <p class="card-sub card-sub--loose">
             Exportiere dein Depot bei deinem Broker als CSV (Depotübersicht oder Bestand). Die Datei wird nur hier auf dem Gerät gelesen.
             Gespeichert werden nur Name, ISIN oder WKN, Stückzahl und Einstandskurs der Zeilen, die du bestätigst.
+            Für neue Positionen schlägt die KI Themen vor; dafür gehen nur die Namen an Claude Haiku, nie ISIN, WKN, Stückzahl oder Kurs.
           </p>
           <p class="card-sub card-sub--loose">
             Tabellen aus Numbers oder Excel am Mac gehen auch: erst als CSV sichern (Numbers: Ablage → Exportieren → CSV; Excel: Sichern unter →

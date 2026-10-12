@@ -147,7 +147,7 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einsta
 - Zeilen ohne gültige ISIN (Prüfziffer) und ohne gültige WKN erscheinen als Fehler und werden nicht übernommen.
 - Die Datei selbst wird nur auf dem Gerät gelesen und nicht hochgeladen.
 
-**Themen** schlägt die App vorerst nach festen Regeln aus dem Namen vor (z. B. „MSCI World“ → Welt, USA). Ein KI-Vorschlag kommt mit M5.
+**Themen** schlägt die App nach festen Regeln aus dem Namen vor (z. B. „MSCI World“ → Welt, USA) und zusätzlich per KI (`daily-topics`, siehe unten), im Formular und beim CSV-Import.
 
 ## News, Briefings und Push (ab M5/M6)
 
@@ -158,6 +158,7 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einsta
 - `daily-briefing` erstellt außerdem werktags ab 9:30 Uhr den **Marktstart** (Migration `0013_market_open.sql`, im SQL Editor ausführen, danach `daily-briefing` und `daily-news` neu deployen): Die Function holt dafür die Kurse von DAX, MDAX, Euro Stoxx 50, den US-Futures und einer festen Liste großer deutscher Werte (`OPEN_STOCKS` in `supabase/functions/_shared/marketopen.ts`, bei Indexänderungen dort anpassen), nimmt die größten Gewinner und Verlierer und lässt Claude Haiku 5.5 zwei bis drei Sätze schreiben. Gründe nennt die KI nur, wenn eine Meldung die Firma ausdrücklich nennt. Die Zahlen kommen nie von der KI. Kein Push. Findet sie bis 12 Uhr keinen DAX-Kurs von heute (Feiertag, Anbieter gesperrt), gibt es an dem Tag keine Karte. Kosten: etwa 0,2 Cent pro Tag. Test: `daily-briefing` mit `{"op":"generate","kind":"open"}` aufrufen.
 - **Filter in den News:** `daily-news` verwirft beim Abruf klar Fachfremdes (Sport, Promis, Horoskop, Rezepte; `_shared/newsNoise.ts`). Die KI bewertet jede Meldung mit 1 bis 5; die App blendet 1 und 2 standardmäßig aus (Meldungen zu deinem Depot bleiben ab Wertung 2 sichtbar, Notenbanken immer), der Schalter „Auch Unwichtiges“ zeigt alles. Zur Themen-Zuordnung kommen zu den Suchwörtern (`_shared/newsTopics.ts`) die KI-Zuordnung (sie sieht nur die Namen deiner Themen) und die Kurzfassung als Text.
 - `daily-news-detail` (nur auf Tipp, mit deiner Anmeldung): der Knopf **„Ausführlich (1 bis 2 Min.)“** unter einer Meldung. Die Function lädt die Artikelseite, liest den Text und lässt Claude Haiku 5.5 ihn in eigenen Worten auf etwa 100 bis 300 Wörter zusammenfassen. Eine **Bezahlschranke wird nicht umgangen**: Meldet die Seite den Artikel als nicht frei (schema.org `isAccessibleForFree`) oder ist nur ein Anreißer lesbar, gibt es keine lange Fassung, und die App sagt das. Kurze Artikel (unter etwa 1.200 Zeichen) bekommen auch keine. Gespeichert wird nur die eigene Zusammenfassung (Tabelle `news_details`, Migration `0011_news_details.sql`, im SQL Editor ausführen), nie der Artikel, und jeder Artikel höchstens einmal. Die App lädt die gespeicherte Zusammenfassung gemeinsam mit den News, sie bleibt also sichtbar (eingeklappt), solange die Meldung in der Liste steht (48 Stunden); gelöscht wird sie zusammen mit der Meldung nach 14 Tagen. Dazu gibt es ein **Fazit** mit höchstens 3 Sätzen (Migration `0012_news_conclusion.sql`): Kernaussage und mögliche Berührung mit den Themen deines Depots. Die KI bekommt dafür nur die Themen deiner Positionen, die im Artikel vorkommen, nie Namen, ISINs oder Beträge; sie beschreibt mögliche Zusammenhänge, sagt aber keinen Kurs voraus und empfiehlt nichts. Kosten: etwa 0,1 Cent pro Artikel, innerhalb des Monatsbudgets.
+- `daily-topics` (nur beim Anlegen oder Importieren, mit deiner Anmeldung): schlägt Themen für Positionen vor. Claude Haiku 5.5 bekommt nur die **Namen** der Positionen, nie ISIN, WKN, Stückzahl, Kurs oder Gruppe, und wählt 2 bis 6 Themen, bevorzugt aus den bekannten (`KNOWN_TOPICS` in `_shared/newsTopics.ts`). Es wird nichts gespeichert; die App zeigt die Themen als Vorschläge zum Übernehmen. Kosten: unter 0,1 Cent pro Aufruf, innerhalb des Monatsbudgets. Ohne Schlüssel, ohne Budget oder offline gibt es nur die Vorschläge aus dem Namen.
 - **Termine** (Zinsentscheide von Fed und EZB, US-Inflation, US-Arbeitsmarkt) kommen aus den offiziellen Kalendern, siehe `supabase/migrations/0004_…`. Einmal im Jahr mit den neuen Listen ergänzen. Das US-Statistikamt (BLS) sperrt automatische Abrufe, deshalb keine automatische Liste.
 - Die geplanten Aufrufe tragen eine geheime Kennung, die in der Datenbank (Supabase Vault) erzeugt wurde und sie nie verlässt. Ohne Kennung antworten die Functions mit „unauthorized“.
 
@@ -171,7 +172,7 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einsta
 
 **Functions neu veröffentlichen** (nach Änderungen in `supabase/functions/`):
 ```bash
-npx supabase functions deploy daily-news daily-briefing daily-news-detail --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
+npx supabase functions deploy daily-news daily-briefing daily-news-detail daily-topics --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
 ```
 
 **Prüfen, ob der Zeitplan läuft** (SQL Editor):

@@ -8,6 +8,8 @@ import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableU
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 import { isNoise } from './newsNoise.ts';
 import { buildOpen, newsAbout, parseOpen, pickMovers, quoteOf } from './marketopen.ts';
+import { cleanName, MAX_TOPICS, parseTopics, topicsSystem, topicsUser } from './topicSuggest.ts';
+import { KNOWN_TOPICS } from './newsTopics.ts';
 import type { ChartData } from './prices.ts';
 
 describe('RSS', () => {
@@ -422,5 +424,28 @@ describe('market start update', () => {
     expect(plain).toMatchObject({ ai: false, headline: null, text: null, indices: [{ name: 'DAX', changePct: 0.46 }], gainers: [{ name: 'SAP', changePct: 3.46, reason: null, source: null }] });
     const withAi = buildOpen({ ...base, ai: parseOpen({ headline: 'H', text: 'T', reasons: [{ symbol: 'SAP.DE', reason: 'Grund', item_id: 1 }] }, [q('SAP.DE', 'SAP', 3.456)], news) });
     expect(withAi).toMatchObject({ ai: true, headline: 'H', text: 'T', gainers: [{ reason: 'Grund' }] });
+  });
+});
+
+describe('topic suggestions', () => {
+  it('sends only cleaned names and lists the known topics', () => {
+    expect(cleanName('  iShares <b>Core</b>   MSCI World ')).toBe('iShares bCore/b MSCI World');
+    expect(cleanName(42)).toBe('');
+    expect(topicsUser(['A', 'B'])).toContain('1: B');
+    expect(topicsSystem(KNOWN_TOPICS)).toContain('Halbleiter');
+  });
+  it('reads the answer per position and never throws on bad data', () => {
+    const data = {
+      items: [
+        { index: 1, topics: ['USA', ' usa ', 'Nasdaq 100', '<script>', 7, ''] },
+        { index: 0, topics: ['Welt'] },
+        { index: 5, topics: ['Weg'] },
+        { index: 'x', topics: ['Weg'] },
+        { index: 2, topics: 'Welt' },
+      ],
+    };
+    expect(parseTopics(data, 3)).toEqual([['Welt'], ['USA', 'Nasdaq 100', 'script'], []]);
+    expect(parseTopics(null, 2)).toEqual([[], []]);
+    expect(parseTopics({ items: [{ index: 0, topics: Array.from({ length: 12 }, (_, i) => `Thema ${i}`) }] }, 1)[0]).toHaveLength(MAX_TOPICS);
   });
 });

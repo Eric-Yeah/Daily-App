@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { SkeletonCard, StateCard } from '../../components/Block';
 import { Header } from '../../components/Header';
 import { useDepot, type Group, type Position, type PositionDraft } from '../../data/depot';
@@ -6,6 +6,7 @@ import { formatInputNumber, parseInputNumber } from '../../lib/format';
 import { isValidIsin, isValidWkn, normalizeIsin, normalizeWkn, securityId } from '../../lib/isin';
 import { useSettings } from '../../lib/settings';
 import { cleanTopics, suggestGroupName, suggestTopics } from '../../lib/topics';
+import { aiTopicsAvailable, suggestTopicsAi } from '../../lib/topicsAi';
 import { go } from '../../router';
 
 export function PositionFormPage({ id }: { id?: string }) {
@@ -58,8 +59,36 @@ function PositionForm({
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
-  const suggestions = suggestTopics(name).filter((t) => !topics.includes(t));
-  const groupHint = !existing && !groupId ? suggestGroupName([...topics, ...suggestTopics(name)]) : null;
+  const [aiTopics, setAiTopics] = useState<string[]>([]);
+  const [aiBusy, setAiBusy] = useState(false);
+
+  // The AI (Claude Haiku) suggests topics from the name once typing pauses. Positions that already have topics and an
+  // unchanged name are left alone. Without login (demo) or when the AI is unavailable, only the rule-based ones show.
+  useEffect(() => {
+    const n = name.trim();
+    if (n.length < 4 || !aiTopicsAvailable() || (existing && existing.topics.length > 0 && n === existing.name)) {
+      setAiTopics([]);
+      return;
+    }
+    let alive = true;
+    setAiBusy(true);
+    const timer = setTimeout(() => {
+      suggestTopicsAi([n]).then(([list]) => {
+        if (!alive) return;
+        setAiTopics(list);
+        setAiBusy(false);
+      });
+    }, 800);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      setAiBusy(false);
+    };
+  }, [name]);
+
+  const taken = new Set(topics.map((t) => t.toLowerCase()));
+  const suggestions = cleanTopics([...suggestTopics(name), ...aiTopics]).filter((t) => !taken.has(t.toLowerCase()));
+  const groupHint = !existing && !groupId ? suggestGroupName([...topics, ...suggestTopics(name), ...aiTopics]) : null;
   const hintGroup = groupHint ? groups.find((g) => g.name === groupHint) : undefined;
 
   const addTopic = (t: string) => {
@@ -243,8 +272,21 @@ function PositionForm({
                 </button>
               </li>
             ))}
+            {suggestions.length > 1 && (
+              <li>
+                <button class="chip chip--suggest" type="button" onClick={() => setTopics(cleanTopics([...topics, ...suggestions]))}>
+                  Alle übernehmen
+                </button>
+              </li>
+            )}
           </ul>
         )}
+        {aiBusy && (
+          <p class="note" role="status">
+            Die KI sucht passende Themen zum Namen …
+          </p>
+        )}
+        {!aiBusy && aiTopics.length > 0 && <p class="note">Vorschläge aus dem Namen und von der KI (nur der Name wird gesendet). Tippen übernimmt sie.</p>}
         <div class="input-row">
           <input
             class="input"

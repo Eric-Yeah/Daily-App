@@ -48,6 +48,9 @@ const SYNONYMS: Record<string, string[]> = {
   Rüstung: ['Rüstung', 'Rüstungskonzern', 'defense stocks', 'defence', 'Rheinmetall', 'Verteidigung', 'Bundeswehr', 'NATO', 'Hensoldt', 'Renk'],
 };
 
+/** The topics Daily knows well (rich search terms); suggestions prefer these. */
+export const KNOWN_TOPICS = Object.keys(SYNONYMS);
+
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function termsFor(topic: string): string[] {

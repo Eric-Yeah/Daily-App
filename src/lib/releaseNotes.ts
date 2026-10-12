@@ -9,6 +9,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.13.0',
+    date: '2026-10-12',
+    title: 'Karten einklappen und Themen per KI vorschlagen',
+    notes: [
+      'Neu: Marktüberblick, Marktstart und Live-Blog lassen sich einklappen. Tippe oben auf die Zeile mit dem Pfeil, dann bleibt nur die Überschrift stehen. Die Karten sind standardmäßig offen; was du einklappst, bleibt auf diesem Gerät eingeklappt, bis du es wieder aufklappst. Der Marktüberblick gilt dabei überall gleich (Heute und News).',
+      'Der Marktüberblick ist jetzt immer ganz offen (vorher war er bei langen Texten automatisch gekürzt, mit „Ganzen Überblick lesen“).',
+      'Neu: Beim Anlegen einer Position schlägt die KI (Claude Haiku 5.5) Themen vor, zusätzlich zu den bisherigen Vorschlägen aus dem Namen. Mit „Alle übernehmen“ nimmst du alle auf einmal. Auch beim CSV-Import bekommen neue Positionen jetzt Themen von der KI.',
+      'Datenschutz: Die KI bekommt dafür nur den Namen der Position, nie ISIN, WKN, Stückzahl, Kurs oder Gruppe. Klappt die KI nicht (kein Budget, offline), bleiben die Vorschläge aus dem Namen.',
+      'Hinweis: Die Themenvorschläge brauchen die neu veröffentlichte Edge Function daily-topics; bis dahin gibt es nur die Vorschläge aus dem Namen.',
+    ],
+  },
+  {
     version: '0.12.1',
     date: '2026-10-12',
     title: 'Sicherheitsprüfung',

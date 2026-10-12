@@ -7,6 +7,8 @@ import { formatPct, formatTime, spokenPct, trend } from '../lib/format';
 import { getSettings } from '../lib/settings';
 import { ChangeTiles } from './Market';
 import { safeHref } from '../lib/safeUrl';
+import { useCollapsed } from '../lib/collapsed';
+import { FoldHead } from './Fold';
 
 function Movers({ title, items }: { title: string; items: OpenMover[] }) {
   if (!items.length) return null;
@@ -43,7 +45,8 @@ function Movers({ title, items }: { title: string; items: OpenMover[] }) {
 
 /**
  * "Marktstart": the short update shortly after Xetra opens (about 09:30) with the index moves, the biggest winners and
- * losers among large German shares and, where the news explain it, why. Hidden until it was written and when signed out.
+ * losers among large German shares and, where the news explain it, why. Starts open; folding it (tap on the label line)
+ * keeps only the headline and is remembered on this device. Hidden until it was written and when signed out.
  */
 export function MarketOpenCard() {
   const now = useNow(60_000);
@@ -65,18 +68,23 @@ export function MarketOpenCard() {
 
 export function MarketOpenView({ m }: { m: LiveMarketOpen }) {
   const tz = getSettings().timeZone;
+  const [collapsed, setCollapsed] = useCollapsed('marketopen');
   return (
     <section class="card gap-12 wrap" aria-label="Marktstart">
-      <div class="card-label">Marktstart · Kurse von {formatTime(m.asOf, tz)} Uhr</div>
+      <FoldHead label={`Marktstart · Kurse von ${formatTime(m.asOf, tz)} Uhr`} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       {m.headline && <h2 class="wrap__headline">{m.headline}</h2>}
-      {m.indices.length > 0 && <ChangeTiles items={m.indices} />}
-      {m.text && <p class="wrap__lead">{m.text}</p>}
-      <Movers title="Größte Gewinner" items={m.gainers} />
-      <Movers title="Größte Verlierer" items={m.losers} />
-      {!m.gainers.length && !m.losers.length && <p class="wrap__lead">Noch keine großen Bewegungen unter den großen deutschen Werten.</p>}
-      <p class="wrap__note">
-        Auswahl: große deutsche Werte, Kurse ca. 15 Min. verzögert.{m.text ? ' Text und Gründe sind eine KI-Zusammenfassung der Meldungen, keine Anlageberatung; Fehler sind möglich, bitte das Original prüfen.' : ''}
-      </p>
+      {!collapsed && (
+        <>
+          {m.indices.length > 0 && <ChangeTiles items={m.indices} />}
+          {m.text && <p class="wrap__lead">{m.text}</p>}
+          <Movers title="Größte Gewinner" items={m.gainers} />
+          <Movers title="Größte Verlierer" items={m.losers} />
+          {!m.gainers.length && !m.losers.length && <p class="wrap__lead">Noch keine großen Bewegungen unter den großen deutschen Werten.</p>}
+          <p class="wrap__note">
+            Auswahl: große deutsche Werte, Kurse ca. 15 Min. verzögert.{m.text ? ' Text und Gründe sind eine KI-Zusammenfassung der Meldungen, keine Anlageberatung; Fehler sind möglich, bitte das Original prüfen.' : ''}
+          </p>
+        </>
+      )}
     </section>
   );
 }
