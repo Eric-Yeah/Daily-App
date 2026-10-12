@@ -9,6 +9,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.11.1',
+    date: '2026-10-12',
+    title: 'Kurse auch für Positionen nur mit WKN',
+    notes: [
+      'Behoben: Positionen, die du nur mit WKN (ohne ISIN) angelegt hast, bekamen keine Kurse. Daily findet das Symbol jetzt selbst über die WKN (Xetra-Notierung).',
+      'Die Kurse erscheinen nach dem nächsten Abruf, der alle 30 Minuten zu Handelszeiten läuft.',
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-10-11',
     title: 'Direkt zu Face ID, mit Entsperr-Animation',

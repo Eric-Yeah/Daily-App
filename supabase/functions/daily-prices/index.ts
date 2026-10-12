@@ -18,12 +18,15 @@ import {
   eodhdSearchUrl,
   eodhdSymbolOf,
   eodhdUrl,
+  figiBody,
+  FIGI_URL,
   INDEX_SYMBOLS,
   openSessions,
   parseChart,
   parseEodhd,
   parseEodhdSearch,
   pickEodhdListing,
+  pickFigiListing,
   parseSearch,
   pickListing,
   searchUrl,
@@ -44,11 +47,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let rateLimited = false;
 let lastStatus = 0; // HTTP status of the last request (0 = network error or none); only the number is ever logged
 
-async function fetchJson(url: string): Promise<unknown | null> {
+async function fetchJson(url: string, post?: string): Promise<unknown | null> {
   const yahoo = url.includes('finance.yahoo.com');
   if (yahoo && rateLimited) return null;
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(12_000) });
+    const res = await fetch(url, {
+      method: post ? 'POST' : 'GET',
+      headers: { 'User-Agent': UA, Accept: 'application/json', ...(post ? { 'Content-Type': 'application/json' } : {}) },
+      body: post,
+      signal: AbortSignal.timeout(12_000),
+    });
     lastStatus = res.status;
     if (res.status === 429 && yahoo) rateLimited = true;
     if (!res.ok) return null;
@@ -88,31 +96,40 @@ Deno.serve(async (req) => {
   const xetraDaily = body.force || (weekday && minute >= tradingEnd && minute <= tradingEnd + 40);
   const usDaily = body.force || (weekday && minute >= 22 * 60 && minute <= 22 * 60 + 40);
 
-  const { data: positions } = await db.from('positions').select('id, isin, ticker, exchange, provider_symbol').eq('user_id', owner).eq('archived', false);
+  const { data: positions } = await db.from('positions').select('id, isin, wkn, ticker, exchange, provider_symbol').eq('user_id', owner).eq('archived', false);
   const log: Record<string, unknown> = { errors: [] as string[] };
   const errors = log.errors as string[];
 
   // 1. Find the provider symbol for positions that have none. With the EODHD key, EODHD's ISIN search decides the
   //    listing (euro, Xetra first) and the Yahoo symbol is derived from it, so both sources mean the same exchange.
   //    Without it (or if EODHD knows nothing) Yahoo's search picks one. ticker/exchange hold the EODHD listing.
-  type Pos = { id: string; isin: string | null; ticker: string | null; exchange: string | null; provider_symbol: string | null };
+  type Pos = { id: string; isin: string | null; wkn: string | null; ticker: string | null; exchange: string | null; provider_symbol: string | null };
   const key = Deno.env.get('DAILY_EODHD_API_KEY');
   let eodhd = 0; // EODHD requests in this run (search and prices), limited by MAX_EODHD
   let lookups = 0;
   for (const pos of (positions ?? []) as Pos[]) {
-    // Symbols are looked up by ISIN only: Yahoo and EODHD find nothing by WKN (WKN-only positions get their symbol by hand).
-    if (pos.provider_symbol || !pos.isin || lookups >= MAX_LOOKUPS) continue;
+    // By ISIN: EODHD (with key) or Yahoo search. Yahoo and EODHD find nothing by WKN, so WKN-only positions go to OpenFIGI.
+    if (pos.provider_symbol || (!pos.isin && !pos.wkn) || lookups >= MAX_LOOKUPS) continue;
     if (lookups++ > 0) await sleep(GAP_MS);
-    const listing = key && eodhd < MAX_EODHD && ++eodhd ? pickEodhdListing(parseEodhdSearch(await fetchJson(eodhdSearchUrl(pos.isin, key)))) : null;
-    if (listing) {
-      Object.assign(pos, { provider_symbol: listing.yahooSymbol, ticker: listing.ticker, exchange: listing.exchange });
-    } else {
-      const hit = pickListing(parseSearch(await fetchJson(searchUrl(pos.isin))));
-      if (!hit) {
-        errors.push('symbol:not-found');
+    if (!pos.isin) {
+      const listing = pickFigiListing(await fetchJson(FIGI_URL, figiBody(pos.wkn!)));
+      if (!listing) {
+        errors.push(`symbol:wkn-not-found:${lastStatus}`);
         continue;
       }
-      Object.assign(pos, { provider_symbol: hit.symbol, ticker: null, exchange: null }); // EODHD symbol is derived from it
+      Object.assign(pos, { provider_symbol: listing.yahooSymbol, ticker: listing.ticker, exchange: listing.exchange });
+    } else {
+      const listing = key && eodhd < MAX_EODHD && ++eodhd ? pickEodhdListing(parseEodhdSearch(await fetchJson(eodhdSearchUrl(pos.isin, key)))) : null;
+      if (listing) {
+        Object.assign(pos, { provider_symbol: listing.yahooSymbol, ticker: listing.ticker, exchange: listing.exchange });
+      } else {
+        const hit = pickListing(parseSearch(await fetchJson(searchUrl(pos.isin))));
+        if (!hit) {
+          errors.push('symbol:not-found');
+          continue;
+        }
+        Object.assign(pos, { provider_symbol: hit.symbol, ticker: null, exchange: null }); // EODHD symbol is derived from it
+      }
     }
     await db.from('positions').update({ provider_symbol: pos.provider_symbol, ticker: pos.ticker, exchange: pos.exchange }).eq('id', pos.id);
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dailyCloses, eodhdFrom, eodhdSymbolOf, parseEodhdSearch, pickEodhdListing, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickListing, toEodhdSymbol } from './prices.ts';
+import { addDays, dailyCloses, eodhdFrom, eodhdSymbolOf, parseEodhdSearch, pickEodhdListing, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickFigiListing, pickListing, toEodhdSymbol } from './prices.ts';
 
 // Invented example data; no real positions.
 const chart = (extra: object = {}) => ({
@@ -165,5 +165,19 @@ describe('EODHD listing search', () => {
     expect(eodhdSymbolOf({ ticker: null, exchange: null, provider_symbol: 'AAA.PA' })).toBe('AAA.PA');
     expect(eodhdSymbolOf({ ticker: 'X', exchange: 'MIL', provider_symbol: 'X.MI' })).toBe('X.MI');
     expect(eodhdSymbolOf({ ticker: null, exchange: null, provider_symbol: null })).toBeNull();
+  });
+});
+
+describe('WKN lookup via OpenFIGI', () => {
+  const resp = (rows: object[]) => [{ data: rows }];
+  it('picks the Xetra listing and derives the symbols', () => {
+    const raw = resp([{ ticker: 'AAA', exchCode: 'SW' }, { ticker: 'AAA', exchCode: 'GY' }]);
+    expect(pickFigiListing(raw)).toEqual({ ticker: 'AAA', exchange: 'XETRA', yahooSymbol: 'AAA.DE' });
+  });
+  it('returns null without a Xetra listing, for odd tickers and for broken responses', () => {
+    expect(pickFigiListing(resp([{ ticker: 'AAA', exchCode: 'SW' }]))).toBeNull();
+    expect(pickFigiListing(resp([{ ticker: 'a b', exchCode: 'GY' }]))).toBeNull();
+    expect(pickFigiListing([{ warning: 'No identifier found.' }])).toBeNull();
+    expect(pickFigiListing({ error: 'x' })).toBeNull();
   });
 });

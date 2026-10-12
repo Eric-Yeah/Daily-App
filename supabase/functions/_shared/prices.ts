@@ -170,6 +170,23 @@ export function pickEodhdListing(list: EodhdListing[]): Resolved | null {
   return null;
 }
 
+// OpenFIGI (free, no key) maps a WKN to listings; Yahoo and EODHD find nothing by WKN. exchCode GY = Xetra.
+export const FIGI_URL = 'https://api.openfigi.com/v3/mapping';
+
+export const figiBody = (wkn: string) => JSON.stringify([{ idType: 'ID_WERTPAPIER', idValue: wkn }]);
+
+/** The Xetra listing (ticker `ABC` → Yahoo `ABC.DE`, EODHD `ABC.XETRA`) from an OpenFIGI mapping response; null if none. */
+export function pickFigiListing(raw: unknown): Resolved | null {
+  const data = (Array.isArray(raw) ? (raw[0] as { data?: unknown } | undefined)?.data : null) ?? [];
+  if (!Array.isArray(data)) return null;
+  for (const r of data as Record<string, unknown>[]) {
+    if (r?.exchCode === 'GY' && typeof r.ticker === 'string' && /^[A-Z0-9]{1,8}$/.test(r.ticker)) {
+      return { ticker: r.ticker, exchange: 'XETRA', yahooSymbol: `${r.ticker}.DE` };
+    }
+  }
+  return null;
+}
+
 /** The EODHD symbol of a position: the stored EODHD listing, else derived from the Yahoo symbol. */
 export function eodhdSymbolOf(p: { ticker: string | null; exchange: string | null; provider_symbol: string | null }): string | null {
   if (p.ticker && p.exchange && p.exchange in YAHOO_SUFFIX) return `${p.ticker}.${p.exchange}`;
