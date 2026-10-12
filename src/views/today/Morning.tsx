@@ -45,7 +45,7 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
           <section class="card" aria-label="Depot gesamt">
             <div class="card-label">Depot gesamt · Schlusskurse {formatWeekday(d.closeDay, 'UTC')}</div>
             <DepotHeadline summary={d.summary} comparedTo="Vortag" />
-            <Sparkline values={d.history} />
+            <Sparkline history={d.history} />
             <div class="divider" />
             <GroupBars groups={d.groups} />
             <MissingNote count={d.missing} />

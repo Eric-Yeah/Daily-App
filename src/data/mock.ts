@@ -175,6 +175,13 @@ function createMockTasks(): TaskStore {
   };
 }
 
+/** Attaches trading days (counted back from the last close) to example closing values. */
+function mockHistory(closeDay: Date, values: number[]): { day: Date; value: number }[] {
+  const days = [closeDay];
+  while (days.length < values.length) days.unshift(previousTradingDay(days[0]));
+  return values.map((value, i) => ({ day: days[i], value }));
+}
+
 export function createMockNotes(): DayNoteStore {
   const notes = new Map<string, string>();
   return {
@@ -196,6 +203,7 @@ export function createMockSource(): DataSource {
 
     async morning(now): Promise<MorningData> {
       const { tradingEnd } = getSettings();
+      const closeDay = lastClosedTradingDay(now, { tradingEnd });
       return {
         weather: ok({ tempC: 14, text: 'bewölkt' }),
         indices: ok([
@@ -212,8 +220,8 @@ export function createMockSource(): DataSource {
         ]),
         depot: ok({
           summary: { value: 48215, changeAbs: 201, changePct: 0.42 },
-          closeDay: lastClosedTradingDay(now, { tradingEnd }),
-          history: [47380, 47520, 47440, 47760, 47680, 47950, 47870, 48140, 48060],
+          closeDay,
+          history: mockHistory(closeDay, [47380, 47520, 47440, 47760, 47680, 47950, 47870, 48140, 48060]),
           groups: MORNING_GROUPS,
         }),
         kpis: ok({ sinceBuy: { pct: 12.8, abs: 5480 }, ytd: { pct: 9.1, abs: 4020 } }),

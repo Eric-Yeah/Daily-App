@@ -122,7 +122,7 @@ export interface MorningData {
   weather: Block<{ tempC: number; text: string }>;
   indices: Block<IndexQuote[]>;
   important: Block<string[]>;
-  depot: Block<{ summary: DepotSummary; closeDay: Date; history: number[]; groups: GroupMove[]; missing?: number }>;
+  depot: Block<{ summary: DepotSummary; closeDay: Date; history: { day: Date; value: number }[]; groups: GroupMove[]; missing?: number }>;
   kpis: Block<{ sinceBuy: { pct: number; abs: number }; ytd: { pct: number; abs: number } }>;
   alert: Block<AlertItem | null>;
   news: Block<NewsItem[]>;

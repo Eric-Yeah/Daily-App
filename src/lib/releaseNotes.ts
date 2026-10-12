@@ -9,6 +9,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.14.0',
+    date: '2026-10-12',
+    title: 'Interaktive Kurven',
+    notes: [
+      'Neu: Die Kurven lassen sich jetzt erkunden. Fahre mit dem Finger (oder der Maus) über eine Kurve, dann zeigt Daily dir an dieser Stelle Uhrzeit bzw. Tag, den Depotwert und die Veränderung. Das gilt für den Verlauf am Morgen, die Tageskurve von Nachmittag und Abend und die kleinen US-Kurven.',
+      'Bei der Tageskurve ist die Veränderung die zum Vortagsschluss, beim Morgenverlauf die zum Tag davor. Bei den US-Kurven siehst du nur die Veränderung, keine Indexstände.',
+      'Mit Blenden von Beträgen siehst du auch hier keine Euro-Werte, nur Zeit und Prozent. Mit der Tastatur geht es mit den Pfeiltasten, mit Pos1 und Ende springst du zum Anfang oder Ende.',
+      'Nach oben und unten scrollen kannst du wie gewohnt, auch wenn dein Finger auf einer Kurve startet.',
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-10-12',
     title: 'Karten einklappen und Themen per KI vorschlagen',

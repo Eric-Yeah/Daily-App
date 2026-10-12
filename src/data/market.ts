@@ -228,7 +228,7 @@ export async function marketMorning(now: Date): Promise<Partial<MorningData>> {
     return { ...noWeather, indices: idx, depot: none(), kpis: none(), alert: none() };
   }
   const r = c.result;
-  const history = depotHistory(held(b), b.closes, 10, c.lastDay).map((d) => d.value);
+  const history = depotHistory(held(b), b.closes, 10, c.lastDay).map((d) => ({ day: dateOf(d.day), value: d.value }));
   const kpis: MorningData['kpis'] =
     r.ytdPct === null || r.ytdAbs === null
       ? empty('Zum Jahresbeginn fehlen Vergleichskurse.')

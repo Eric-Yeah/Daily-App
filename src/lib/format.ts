@@ -85,7 +85,7 @@ export const MISSING = '—';
 // ---------- Dates and times ----------
 
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
-function df(timeZone: string, kind: 'time' | 'long' | 'weekday' | 'month'): Intl.DateTimeFormat {
+function df(timeZone: string, kind: 'time' | 'long' | 'weekday' | 'month' | 'short'): Intl.DateTimeFormat {
   const key = `${timeZone}|${kind}`;
   let f = dateFormats.get(key);
   if (!f) {
@@ -96,7 +96,9 @@ function df(timeZone: string, kind: 'time' | 'long' | 'weekday' | 'month'): Intl
           ? { weekday: 'long', day: 'numeric', month: 'long' }
           : kind === 'weekday'
             ? { weekday: 'long' }
-            : { month: 'long' };
+            : kind === 'short'
+              ? { weekday: 'short', day: 'numeric', month: 'short' }
+              : { month: 'long' };
     f = new Intl.DateTimeFormat('de-DE', { ...opts, timeZone });
     dateFormats.set(key, f);
   }
@@ -116,6 +118,11 @@ export function formatDateLong(date: Date, timeZone: string): string {
 /** "Freitag" */
 export function formatWeekday(date: Date, timeZone: string): string {
   return df(timeZone, 'weekday').format(date);
+}
+
+/** "Fr., 9. Okt." */
+export function formatDayShort(date: Date, timeZone: string): string {
+  return df(timeZone, 'short').format(date);
 }
 
 /** "Oktober" */

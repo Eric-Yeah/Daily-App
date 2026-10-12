@@ -1,7 +1,8 @@
 import type { ComponentChildren } from 'preact';
 import type { DepotSummary, GroupMove, IndexQuote, IntradaySeries, Kpi, MarketEvent, SeriesPoint } from '../data/types';
 import { sessionChart, sparkline } from '../lib/chart';
-import { formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
+import { formatDayShort, formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
+import { minuteLabel, ScrubChart, type ScrubPoint } from './ScrubChart';
 import { useSettings } from '../lib/settings';
 import { safeHref } from '../lib/safeUrl';
 
@@ -59,7 +60,9 @@ export function DepotHeadline({ summary, comparedTo }: { summary: DepotSummary; 
   );
 }
 
-export function Sparkline({ values }: { values: number[] }) {
+export function Sparkline({ history }: { history: { day: Date; value: number }[] }) {
+  const { hideAmounts } = useSettings();
+  const values = history.map((h) => h.value);
   const p = sparkline(values);
   const first = values[0];
   const last = values.at(-1);
@@ -67,43 +70,60 @@ export function Sparkline({ values }: { values: number[] }) {
     values.length > 1 && first > 0 && last !== undefined
       ? `Verlauf der letzten ${values.length} Schlusskurse: ${spokenPct(((last - first) / first) * 100)} seit dem ersten`
       : 'Verlauf der Schlusskurse';
+  const points: ScrubPoint[] = history.map((h, i) => ({
+    ...p.xy[i],
+    when: formatDayShort(h.day, 'UTC'),
+    value: hideAmounts ? undefined : formatEuro(h.value),
+    pct: i > 0 && history[i - 1].value > 0 ? ((h.value - history[i - 1].value) / history[i - 1].value) * 100 : null,
+  }));
   return (
-    <svg class="chart" viewBox="0 0 320 64" height="64" preserveAspectRatio="none" role="img" aria-label={label}>
-      <path d={p.area} fill="#8DB8FF" fill-opacity="0.14" />
-      <path
-        d={p.line}
-        fill="none"
-        stroke="#8DB8FF"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        vector-effect="non-scaling-stroke"
-      />
-    </svg>
+    <ScrubChart points={points} height={64} label={label} color="#8DB8FF">
+      <svg class="chart" viewBox="0 0 320 64" height="64" preserveAspectRatio="none" role="img" aria-label={label}>
+        <path d={p.area} fill="#8DB8FF" fill-opacity="0.14" />
+        <path
+          d={p.line}
+          fill="none"
+          stroke="#8DB8FF"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          vector-effect="non-scaling-stroke"
+        />
+      </svg>
+    </ScrubChart>
   );
 }
 
 /** Depot intraday curve: dashed previous close, filled area, marker, dotted remainder. */
 export function IntradayChart({ series }: { series: IntradaySeries }) {
   const c = sessionChart(series.points, series.prevClose, { start: series.sessionStart, end: series.sessionEnd }, { height: 110, top: 22, bottom: 70 });
+  const { hideAmounts } = useSettings();
   const last = series.points.at(-1);
   const label = last
     ? `Tageskurve des Depots: aktuell ${spokenPct(((last.value - series.prevClose) / series.prevClose) * 100, 2)} gegenüber dem Vortagsschluss`
     : 'Tageskurve des Depots';
+  const points: ScrubPoint[] = series.points.map((pt, i) => ({
+    ...c.xy[i],
+    when: minuteLabel(pt.minute),
+    value: hideAmounts ? undefined : formatEuro(pt.value),
+    pct: series.prevClose > 0 ? ((pt.value - series.prevClose) / series.prevClose) * 100 : null,
+  }));
   return (
-    <svg class="chart" viewBox="0 0 320 110" height="110" role="img" aria-label={label}>
-      <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
-      {c.end && (
-        <>
-          <path d={c.area} fill="#8DB8FF" fill-opacity="0.14" />
-          <path d={c.line} fill="none" stroke="#8DB8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-          <circle cx={Math.max(4.5, Math.min(316, c.end.x))} cy={c.end.y} r="4.5" fill="#8DB8FF" />
-          {c.open && (
-            <line x1={c.end.x} y1={c.end.y} x2="320" y2={c.end.y} stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5" />
-          )}
-        </>
-      )}
-    </svg>
+    <ScrubChart points={points} height={110} label={label} color="#8DB8FF">
+      <svg class="chart" viewBox="0 0 320 110" height="110" role="img" aria-label={label}>
+        <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
+        {c.end && (
+          <>
+            <path d={c.area} fill="#8DB8FF" fill-opacity="0.14" />
+            <path d={c.line} fill="none" stroke="#8DB8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx={Math.max(4.5, Math.min(316, c.end.x))} cy={c.end.y} r="4.5" fill="#8DB8FF" />
+            {c.open && (
+              <line x1={c.end.x} y1={c.end.y} x2="320" y2={c.end.y} stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5" />
+            )}
+          </>
+        )}
+      </svg>
+    </ScrubChart>
   );
 }
 
@@ -118,18 +138,27 @@ export function UsMiniChart({ points, prevClose, start, end, changePct, name }: 
 }) {
   const c = sessionChart(points, prevClose, { start, end }, { height: 44, top: 8, bottom: 38 });
   const color = trend(changePct, 1) === 'neg' ? '#FF9C93' : trend(changePct, 1) === 'pos' ? '#6FDCAA' : '#A9B8C9';
+  const label = `Tageskurve${name ? ` ${name}` : ''}: ${spokenPct(changePct, 1)}`;
+  // Index levels are not shown, only the change against the previous close.
+  const scrub: ScrubPoint[] = points.map((pt, i) => ({
+    ...c.xy[i],
+    when: minuteLabel(pt.minute),
+    pct: prevClose > 0 ? ((pt.value - prevClose) / prevClose) * 100 : null,
+  }));
   return (
-    <svg class="chart" viewBox="0 0 320 44" height="44" role="img" aria-label={`Tageskurve${name ? ` ${name}` : ''}: ${spokenPct(changePct, 1)}`}>
-      <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
-      {c.end && (
-        <>
-          <path d={c.line} fill="none" stroke={color} stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-          {c.open && (
-            <line x1={c.end.x} y1={c.end.y} x2="320" y2={c.end.y} stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5" />
-          )}
-        </>
-      )}
-    </svg>
+    <ScrubChart points={scrub} height={44} label={label} color={color} compact>
+      <svg class="chart" viewBox="0 0 320 44" height="44" role="img" aria-label={label}>
+        <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
+        {c.end && (
+          <>
+            <path d={c.line} fill="none" stroke={color} stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+            {c.open && (
+              <line x1={c.end.x} y1={c.end.y} x2="320" y2={c.end.y} stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5" />
+            )}
+          </>
+        )}
+      </svg>
+    </ScrubChart>
   );
 }
 
