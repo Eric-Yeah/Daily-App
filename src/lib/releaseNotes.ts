@@ -9,6 +9,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.14.1',
+    date: '2026-10-12',
+    title: 'Besser auf Mac und iPad',
+    notes: [
+      'Die Kurven füllen jetzt auf jedem Bildschirm die ganze Kartenbreite. Auf dem Mac blieb die Tageskurve vorher klein in der Mitte stehen, während die Uhrzeiten darunter über die volle Breite liefen.',
+      'Die Uhrzeiten unter den Kurven stehen jetzt an der richtigen Stelle (12:00 genau dort, wo 12 Uhr auf der Kurve liegt, auch bei den US-Kurven).',
+      'Auf dem Mac reagieren Schaltflächen und Karten beim Darüberfahren mit der Maus.',
+      'Auf dem iPad hochkant und in schmalen Mac-Fenstern geht die Tab-Leiste jetzt über die ganze Breite.',
+      'Auf dem Handy sieht alles aus wie bisher.',
+    ],
+  },
+  {
     version: '0.14.0',
     date: '2026-10-12',
     title: 'Interaktive Kurven',

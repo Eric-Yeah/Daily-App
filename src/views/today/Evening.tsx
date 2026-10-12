@@ -36,7 +36,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
             </div>
             <DepotHeadline summary={d.summary} comparedTo={`${formatWeekday(d.prevCloseDay, 'UTC')}sschluss`} />
             <IntradayChart series={d.intraday} />
-            <Axis labels={['09:00', '12:00', '15:00', tradingEnd]} />
+            <Axis labels={['09:00', '12:00', '15:00', tradingEnd]} session={{ start: '09:00', end: tradingEnd }} />
             <div class="divider" />
             <GroupBars groups={d.groups} />
             <MissingNote count={d.missing} />
@@ -72,7 +72,7 @@ export function Evening({ source, now, switcher }: { source: DataSource; now: Da
                 <UsMiniChart name={i.name} points={i.points} prevClose={i.prevClose} start={u.sessionStart} end={u.sessionEnd} changePct={i.changePct} />
               </div>
             ))}
-            <Axis labels={[u.sessionStart, '18:00', '20:00', u.sessionEnd]} />
+            <Axis labels={[u.sessionStart, '18:00', '20:00', u.sessionEnd]} session={{ start: u.sessionStart, end: u.sessionEnd }} />
             <p class="card-sub card-sub--loose">
               Der US-Teil deiner Welt-ETFs bewegt sich heute Abend noch weiter. Das zeigt sich erst morgen im Kurs.
             </p>

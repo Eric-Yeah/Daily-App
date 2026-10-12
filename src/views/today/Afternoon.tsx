@@ -64,7 +64,7 @@ export function Afternoon({ source, now, switcher }: { source: DataSource; now: 
               </div>
               <DepotHeadline summary={d.summary} comparedTo={closeName} />
               <IntradayChart series={d.intraday} />
-              <Axis labels={['09:00', '12:00', '15:00', tradingEnd]} />
+              <Axis labels={['09:00', '12:00', '15:00', tradingEnd]} session={{ start: '09:00', end: tradingEnd }} />
               <div class="note">
                 Gestrichelt: {closeName} · {progress}
               </div>

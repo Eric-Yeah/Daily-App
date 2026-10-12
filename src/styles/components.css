@@ -329,6 +329,36 @@
   display: block;
   width: 100%;
 }
+/* Charts stretch to the card width at a fixed height; strokes and dashes keep their pixel size. */
+.chart path,
+.chart line {
+  vector-effect: non-scaling-stroke;
+}
+.chart-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #8DB8FF;
+  pointer-events: none;
+}
+.axis--timed {
+  position: relative;
+  display: block;
+  height: 15px;
+}
+.axis--timed span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+.axis--timed .axis__start {
+  transform: none;
+}
+.axis--timed .axis__end {
+  transform: translateX(-100%);
+}
 .scrub {
   position: relative;
   /* Vertical swipes still scroll the page; horizontal drags explore the chart. */
@@ -1716,4 +1746,31 @@ a.button--secondary:hover {
 .mover__reason a {
   font-weight: 700;
   white-space: nowrap;
+}
+
+/* ---------- Mouse and trackpad (Mac): hover feedback, only where a real pointer exists ---------- */
+@media (hover: hover) {
+  .button:not(:disabled):hover,
+  .segmented button:not(:disabled):hover,
+  .chip:hover,
+  .icon-button:hover,
+  .file-button:hover,
+  .fold:hover,
+  .view-switcher__now:hover {
+    filter: brightness(1.12);
+  }
+  .release-details summary:hover {
+    color: var(--link);
+  }
+}
+
+/* ---------- Tablet portrait / narrow window (481–899 px): tab bar spans the window, items stay centred ---------- */
+@media (min-width: 481px) and (max-width: 899px) {
+  .tabbar {
+    left: 0;
+    transform: none;
+    max-width: none;
+    justify-content: center;
+    gap: 32px;
+  }
 }

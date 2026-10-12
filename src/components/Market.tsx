@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import type { DepotSummary, GroupMove, IndexQuote, IntradaySeries, Kpi, MarketEvent, SeriesPoint } from '../data/types';
-import { sessionChart, sparkline } from '../lib/chart';
+import { CHART_WIDTH, sessionChart, sparkline } from '../lib/chart';
+import { parseHHMM, sessionFraction } from '../lib/time';
 import { formatDayShort, formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
 import { minuteLabel, ScrubChart, type ScrubPoint } from './ScrubChart';
 import { useSettings } from '../lib/settings';
@@ -110,19 +111,19 @@ export function IntradayChart({ series }: { series: IntradaySeries }) {
   }));
   return (
     <ScrubChart points={points} height={110} label={label} color="#8DB8FF">
-      <svg class="chart" viewBox="0 0 320 110" height="110" role="img" aria-label={label}>
+      <svg class="chart" viewBox="0 0 320 110" height="110" preserveAspectRatio="none" role="img" aria-label={label}>
         <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
         {c.end && (
           <>
             <path d={c.area} fill="#8DB8FF" fill-opacity="0.14" />
             <path d={c.line} fill="none" stroke="#8DB8FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-            <circle cx={Math.max(4.5, Math.min(316, c.end.x))} cy={c.end.y} r="4.5" fill="#8DB8FF" />
             {c.open && (
               <line x1={c.end.x} y1={c.end.y} x2="320" y2={c.end.y} stroke="#3A4A5F" stroke-width="1.5" stroke-dasharray="2 5" />
             )}
           </>
         )}
       </svg>
+      {c.end && <span class="chart-dot" style={{ left: `${(c.end.x / CHART_WIDTH) * 100}%`, top: `${c.end.y}px` }} aria-hidden="true" />}
     </ScrubChart>
   );
 }
@@ -147,7 +148,7 @@ export function UsMiniChart({ points, prevClose, start, end, changePct, name }: 
   }));
   return (
     <ScrubChart points={scrub} height={44} label={label} color={color} compact>
-      <svg class="chart" viewBox="0 0 320 44" height="44" role="img" aria-label={label}>
+      <svg class="chart" viewBox="0 0 320 44" height="44" preserveAspectRatio="none" role="img" aria-label={label}>
         <line x1="0" y1={c.baselineY} x2="320" y2={c.baselineY} stroke="#4A5B70" stroke-width="1.5" stroke-dasharray="4 5" />
         {c.end && (
           <>
@@ -162,12 +163,30 @@ export function UsMiniChart({ points, prevClose, start, end, changePct, name }: 
   );
 }
 
-export function Axis({ labels }: { labels: string[] }) {
+/**
+ * Time axis under a chart. With `session` the labels sit at their real time inside the session
+ * (same scale as the curve above); without it they are spread evenly.
+ */
+export function Axis({ labels, session }: { labels: string[]; session?: { start: string; end: string } }) {
+  if (!session) {
+    return (
+      <div class="axis" aria-hidden="true">
+        {labels.map((l) => (
+          <span key={l}>{l}</span>
+        ))}
+      </div>
+    );
+  }
   return (
-    <div class="axis" aria-hidden="true">
-      {labels.map((l) => (
-        <span key={l}>{l}</span>
-      ))}
+    <div class="axis axis--timed" aria-hidden="true">
+      {labels.map((l) => {
+        const f = sessionFraction(parseHHMM(l), session.start, session.end);
+        return (
+          <span key={l} class={f <= 0 ? 'axis__start' : f >= 1 ? 'axis__end' : undefined} style={{ left: `${f * 100}%` }}>
+            {l}
+          </span>
+        );
+      })}
     </div>
   );
 }
