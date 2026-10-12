@@ -8,7 +8,7 @@ import { currentSession } from '../lib/auth';
 import { useNow } from '../lib/clock';
 import { MARKETS } from '../lib/markets';
 import { useResync } from '../lib/resync';
-import { activeCount, applyFilter, DEFAULT_FILTER, marketCounts, type NewsFilter } from '../lib/newsFilter';
+import { activeCount, applyFilter, DEFAULT_FILTER, hiddenCount, marketCounts, type NewsFilter } from '../lib/newsFilter';
 import type { Block } from '../data/types';
 import { DISCLAIMER } from './Pages';
 
@@ -53,6 +53,7 @@ export function NewsTab() {
   const topics = [...new Set(all.filter((n) => n.positions > 0).flatMap((n) => n.topics))].sort((a, b) => a.localeCompare(b, 'de'));
   const sources = [...new Set(all.map((n) => n.source))].sort((a, b) => a.localeCompare(b, 'de'));
   const active = activeCount(filter);
+  const hidden = hiddenCount(all, filter, now);
   const toggleMarket = (key: string) => change({ markets: filter.markets.includes(key) ? filter.markets.filter((k) => k !== key) : [...filter.markets, key] });
 
   return (
@@ -148,6 +149,9 @@ export function NewsTab() {
                 <button class={`chip${filter.onlyOfficial ? ' chip--active' : ''}`} type="button" aria-pressed={filter.onlyOfficial} onClick={() => change({ onlyOfficial: !filter.onlyOfficial })}>
                   Nur Notenbanken
                 </button>
+                <button class={`chip${filter.showAll ? ' chip--active' : ''}`} type="button" aria-pressed={filter.showAll} onClick={() => change({ showAll: !filter.showAll })}>
+                  Auch Unwichtiges
+                </button>
               </div>
               {topics.length > 0 && (
                 <div class="field">
@@ -169,6 +173,14 @@ export function NewsTab() {
           {shown.length ? (
             <>
               <NewsList title={`${shown.length} ${shown.length === 1 ? 'Meldung' : 'Meldungen'}`} items={shown.slice(0, limit)} now={now} />
+              {hidden > 0 && (
+                <p class="note">
+                  {hidden} weniger wichtige {hidden === 1 ? 'Meldung ist' : 'Meldungen sind'} ausgeblendet.{' '}
+                  <button class="link-button" type="button" onClick={() => change({ showAll: true })}>
+                    Anzeigen
+                  </button>
+                </p>
+              )}
               {shown.length > limit && (
                 <button class="button button--secondary button--wide" type="button" onClick={() => setLimit(limit + PAGE)}>
                   Mehr anzeigen ({shown.length - limit} weitere)
@@ -180,7 +192,9 @@ export function NewsTab() {
               title="Keine Meldungen"
               message={
                 all.length
-                  ? 'Zu diesen Filtern gibt es gerade nichts. Lockere die Filter oder tippe auf „Zurücksetzen“.'
+                  ? hidden > 0
+                    ? `Gerade nichts Wichtiges zu diesen Filtern. ${hidden} weniger wichtige Meldungen sind ausgeblendet; unter „Weitere Filter“ kannst du „Auch Unwichtiges“ einschalten.`
+                    : 'Zu diesen Filtern gibt es gerade nichts. Lockere die Filter oder tippe auf „Zurücksetzen“.'
                   : 'Die Meldungen werden alle 30 Minuten abgerufen (6 bis 23 Uhr). Lege im Depot Themen fest, damit Meldungen deinen Positionen zugeordnet werden.'
               }
             />

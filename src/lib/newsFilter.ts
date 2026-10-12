@@ -11,6 +11,7 @@ export interface NewsFilter {
   onlyDepot: boolean;
   onlyImportant: boolean; // importance 4 or 5
   onlyOfficial: boolean; // central banks and authorities
+  showAll: boolean; // also show the items rated unimportant (hidden by default)
   sort: 'importance' | 'recent';
 }
 
@@ -23,8 +24,23 @@ export const DEFAULT_FILTER: NewsFilter = {
   onlyDepot: false,
   onlyImportant: false,
   onlyOfficial: false,
+  showAll: false,
   sort: 'importance',
 };
+
+/** Items younger than this may still wait for their rating, so they are not hidden yet. */
+const UNRATED_GRACE_H = 3;
+
+/**
+ * Whether an item is worth showing by default. Central bank news always; news about the depot unless it is rated
+ * worthless (1); everything else only when rated 3 or higher. Items not rated yet stay for a few hours.
+ */
+export function isRelevant(n: LiveNews, now: Date): boolean {
+  if (n.official) return true;
+  if (n.importance === null) return n.positions > 0 || now.getTime() - n.publishedAt.getTime() < UNRATED_GRACE_H * 3600_000;
+  if (n.positions > 0) return n.importance >= 2;
+  return n.importance >= 3;
+}
 
 /** Lower case without accents, so "oel" does not match but "Öl" and "ol" do (and "Zürich" = "zurich"). */
 export function fold(s: string): string {
@@ -53,6 +69,7 @@ export function applyFilter(items: LiveNews[], f: NewsFilter, now: Date): LiveNe
   const words = fold(f.query).split(/\s+/).filter(Boolean);
   const out = items.filter((n) => {
     if (n.publishedAt.getTime() < since) return false;
+    if (!f.showAll && !isRelevant(n, now)) return false;
     if (f.onlyDepot && !(n.positions > 0)) return false;
     if (f.onlyImportant && (n.importance ?? 0) < 4) return false;
     if (f.onlyOfficial && !n.official) return false;
@@ -69,6 +86,12 @@ export function applyFilter(items: LiveNews[], f: NewsFilter, now: Date): LiveNe
     return true;
   });
   return out.sort(f.sort === 'recent' ? byRecent : byImportance);
+}
+
+/** How many items the default relevance filter hides (within the time window), for the "N ausgeblendet" note. */
+export function hiddenCount(items: LiveNews[], f: NewsFilter, now: Date): number {
+  if (f.showAll) return 0;
+  return applyFilter(items, { ...f, showAll: true }, now).length - applyFilter(items, f, now).length;
 }
 
 /** How many of the items belong to each market (for the chip counts). */
@@ -88,6 +111,7 @@ export function activeCount(f: NewsFilter): number {
     (f.hours !== DEFAULT_FILTER.hours ? 1 : 0) +
     (f.onlyDepot ? 1 : 0) +
     (f.onlyImportant ? 1 : 0) +
-    (f.onlyOfficial ? 1 : 0)
+    (f.onlyOfficial ? 1 : 0) +
+    (f.showAll ? 1 : 0)
   );
 }

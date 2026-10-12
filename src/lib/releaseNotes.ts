@@ -9,6 +9,18 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.12.0',
+    date: '2026-10-12',
+    title: 'Marktstart-Update und aufgeräumte News',
+    notes: [
+      'Neu: Kurz nach der Eröffnung in Frankfurt (ab etwa 9:30 Uhr, nur Montag bis Freitag) erscheint auf „Heute“ die Karte „Marktstart“. Sie zeigt, wie DAX, MDAX, Euro Stoxx 50 und die US-Futures stehen, welche großen deutschen Werte am stärksten gewinnen oder verlieren und, wenn eine Meldung die Firma nennt, warum. Ohne passende Meldung steht kein Grund da.',
+      'Die Zahlen kommen direkt aus den Kursdaten, nur der kurze Text und die Gründe sind eine KI-Zusammenfassung der Meldungen. Es gibt dazu keine Push-Nachricht.',
+      'News: Unwichtiges ist jetzt standardmäßig ausgeblendet (Sport, Ratgeber, Vermischtes und alles, was die KI als wenig relevant einstuft). Meldungen zu deinem Depot und von Notenbanken bleiben. Unter „Weitere Filter“ holt „Auch Unwichtiges“ alles zurück.',
+      'News zu deinen Themen: Der Filter war zu streng. Daily erkennt Zusammenhänge jetzt breiter (zum Beispiel Börsen- und Zollmeldungen bei „Welt“ und „USA“, Rechenzentren bei „KI“) und lässt die KI zusätzlich prüfen, welche deiner Themen eine Meldung sinngemäß berührt. Dafür sieht die KI die Namen deiner Themen, nie Positionen, ISINs oder Beträge.',
+      'Hinweis: Das Marktstart-Update braucht einmalig eine Datenbank-Änderung (Migration 0013) und neu veröffentlichte Edge Functions; bis dahin erscheint die Karte nicht.',
+    ],
+  },
+  {
     version: '0.11.2',
     date: '2026-10-12',
     title: 'Kurssymbol auch für ETFs per WKN',

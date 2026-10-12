@@ -19,6 +19,8 @@ import {
   type ExamInput,
   type NewsInput,
 } from '../_shared/briefing.ts';
+import { buildOpen, newsAbout, openSystem, openUser, OPEN_INDICES, OPEN_SCHEMA, OPEN_STOCKS, parseOpen, pickMovers, quoteOf, type MarketOpenContent, type Quote } from '../_shared/marketopen.ts';
+import { chartUrl, parseChart } from '../_shared/prices.ts';
 import { sendPush, vapidKeys } from '../_shared/push.ts';
 import {
   indexMoves,
@@ -44,6 +46,10 @@ const INDEX_NAMES: Record<string, string> = { '^GDAXI': 'DAX', '^STOXX50E': 'Eur
 const WEB_SEARCH_ENABLED = false;
 const KIND_LABEL: Record<BriefingKind, string> = { morning: 'Morgen', afternoon: 'Mittag', evening: 'Abend' };
 const APP_URL = 'https://eric-yeah.github.io/Daily-App/#/heute';
+// "Marktstart": a short update shortly after Xetra opens. Mon–Fri from this time (Berlin) until OPEN_UNTIL minutes later, no push.
+const OPEN_AT = '09:30';
+const OPEN_UNTIL = 150;
+const YAHOO_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 
 type Db = ReturnType<typeof admin>;
 
@@ -181,6 +187,73 @@ Gib danach 4 bis 6 Stichpunkte auf Deutsch mit den wichtigsten Fakten wieder, je
   return wrap;
 }
 
+/** One Yahoo chart (about 15 minutes delayed) for a symbol; null on any failure. `limited` is set after a 429. */
+async function yahooChart(symbol: string, state: { limited: boolean }) {
+  if (state.limited) return null;
+  try {
+    const res = await fetch(chartUrl(symbol, '1d', '15m'), { headers: { 'User-Agent': YAHOO_UA, Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+    if (res.status === 429) state.limited = true;
+    if (!res.ok) return null;
+    return parseChart(await res.json());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The market start update: index moves and the biggest winners and losers among large German shares (fetched now,
+ * numbers from the price source), plus a short AI text with reasons where a news item names the company.
+ * Null if the DAX has no price from today yet (before the open, holiday, provider down): the next run tries again.
+ */
+async function makeOpen(db: Db, now: Date, budget: number, tz: string, debug: string[]): Promise<MarketOpenContent | null> {
+  const today = isoDay(parts(now, tz));
+  const state = { limited: false };
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const indices: { name: string; changePct: number }[] = [];
+  let asOf = '';
+  for (const [i, sym] of OPEN_INDICES.entries()) {
+    if (i > 0) await sleep(300);
+    const q = quoteOf(sym, await yahooChart(sym.symbol, state), today, tz);
+    if (!q) continue;
+    indices.push({ name: sym.name, changePct: q.changePct });
+    if (sym.symbol === '^GDAXI') asOf = q.ts;
+  }
+  if (!asOf) {
+    debug.push('open:no-dax-quote');
+    return null;
+  }
+
+  const quotes: Quote[] = [];
+  for (const sym of OPEN_STOCKS) {
+    await sleep(300);
+    const q = quoteOf(sym, await yahooChart(sym.symbol, state), today, tz);
+    if (q) quotes.push(q);
+  }
+  debug.push(`open:${quotes.length}/${OPEN_STOCKS.length} stocks${state.limited ? ' (rate limited)' : ''}`);
+  const { gainers, losers } = pickMovers(quotes);
+
+  // News: the best of the last hours, plus items that name one of the movers.
+  const all = rankNews(await loadNews(db, new Date(now.getTime() - 16 * 3600_000).toISOString()));
+  const movers = [...gainers, ...losers];
+  const named = newsAbout(movers, all);
+  const pool = [...named, ...all.filter((n) => !named.some((x) => x.id === n.id)).slice(0, 25)];
+
+  let ai = null;
+  if (pool.length) {
+    const p = parts(now, tz);
+    const res = await askJson<unknown>(db, budget, {
+      system: openSystem(RULES),
+      user: openUser({ time: `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`, indices, gainers, losers, news: pool }),
+      maxTokens: 1200,
+      schema: OPEN_SCHEMA as unknown as Record<string, unknown>,
+    });
+    debug.push(`open:ai ${res.ok ? 'ok' : res.reason}`);
+    if (res.ok) ai = parseOpen(res.data, movers, pool);
+  }
+  return buildOpen({ day: today, now, asOf, indices, gainers, losers, ai });
+}
+
 async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, budget: number, tz: string, debug: string[]): Promise<BriefingContent> {
   const today = isoDay(parts(now, tz));
   const morningStart = new Date(now.getTime() - (minuteOfDay(parts(now, tz)) - 6 * 60) * 60_000); // 06:00 today
@@ -226,7 +299,7 @@ async function generate(db: Db, kind: BriefingKind, now: Date, userId: string, b
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   const db = admin();
-  const body = (await req.json().catch(() => ({}))) as { op?: string; kind?: BriefingKind };
+  const body = (await req.json().catch(() => ({}))) as { op?: string; kind?: BriefingKind | 'open' };
 
   if (body.op === 'key') return json(200, { publicKey: (await vapidKeys(db)).publicKey });
 
@@ -247,7 +320,8 @@ Deno.serve(async (req) => {
   const minute = minuteOfDay(p);
   const done: string[] = [];
 
-  for (const kind of body.op === 'generate' && body.kind ? [body.kind] : KINDS) {
+  const kinds: BriefingKind[] = body.op === 'generate' ? (body.kind && body.kind !== 'open' ? [body.kind] : []) : KINDS;
+  for (const kind of kinds) {
     const pushAt = settings.push[kind];
     const at = hhmmToMinutes(pushAt ?? DEFAULT_TIMES[kind]);
     const force = body.op === 'generate';
@@ -264,6 +338,20 @@ Deno.serve(async (req) => {
       await sendPush(db, { title: 'Daily', body: PUSH_TEXT[kind], url: APP_URL, tag: kind }, owner);
       await db.from('briefings').update({ pushed_at: new Date().toISOString() }).eq('kind', kind).eq('day', today);
       done.push(`${kind}:pushed`);
+    }
+  }
+
+  // Market start update (Mon–Fri, no push): created once the DAX has a price from today, retried every run until OPEN_UNTIL.
+  const openAt = hhmmToMinutes(OPEN_AT);
+  const forceOpen = body.op === 'generate' && body.kind === 'open';
+  if (forceOpen || (body.op !== 'generate' && p.weekday <= 5 && minute >= openAt && minute <= openAt + OPEN_UNTIL)) {
+    const { data: existing } = await db.from('briefings').select('kind').eq('kind', 'open').eq('day', today).maybeSingle();
+    if (!existing || forceOpen) {
+      const content = await makeOpen(db, now, settings.aiBudgetUsdMonth, settings.timeZone, done);
+      if (content) {
+        await db.from('briefings').upsert({ kind: 'open', day: today, content, created_at: now.toISOString() });
+        done.push('open:created');
+      }
     }
   }
   return json(200, { done });

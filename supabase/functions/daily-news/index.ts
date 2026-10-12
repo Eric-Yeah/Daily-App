@@ -12,6 +12,7 @@ import { askJson, RULES } from '../_shared/ai.ts';
 import type { NewsInput } from '../_shared/briefing.ts';
 import { isoDay, parts } from '../_shared/berlin.ts';
 import { LIVE_SCHEMA, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
+import { isNoise } from '../_shared/newsNoise.ts';
 import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 import { indexMoves } from '../_shared/wrap.ts';
 import { parseFeed, type FeedItem } from '../_shared/rss.ts';
@@ -54,9 +55,10 @@ const UA = 'DailyApp/1.0 (+https://eric-yeah.github.io/Daily-App/)';
 const MAX_AGE_H = 48;
 const MAX_PER_FEED = 25;
 const SUMMARY_BATCH = 15;
-const SUMMARY_MAX_PER_RUN = 30;
-// Items without a depot topic (general market news) get only a few summaries per run to protect the budget.
-const SUMMARY_GENERAL_PER_RUN = 6;
+const SUMMARY_MAX_PER_RUN = 45;
+// Items without a depot topic (general market news) get fewer summaries per run than related ones. Every rated item
+// can be judged unimportant and hidden in the app, so most items should get a rating (a batch costs a tenth of a cent).
+const SUMMARY_GENERAL_PER_RUN = 24;
 
 async function fetchText(url: string): Promise<string | null> {
   try {
@@ -187,6 +189,7 @@ Deno.serve(async (req) => {
       .sort((a, b) => b.publishedAt!.getTime() - a.publishedAt!.getTime())
       .slice(0, MAX_PER_FEED);
     for (const item of fresh) {
+      if (isNoise({ title: item.title, url: item.url, official: f.official })) continue;
       const found = matchTopics(`${item.title} ${item.teaser ?? ''}`, topics);
       candidates.push({ ...item, source: f.source, lang: f.lang, feed: f.id, official: f.official, topics: found });
       n++;
@@ -225,11 +228,13 @@ Deno.serve(async (req) => {
   // 3. Link recent news to positions (recomputed, so changed topics are picked up too)
   const { data: recent } = await db
     .from('news_items')
-    .select('id, title, teaser, topics')
+    .select('id, title, teaser, topics, news_summaries(summary)')
     .gte('published_at', new Date(minDate).toISOString())
     .limit(1000);
-  const links = (recent ?? []).flatMap((s: { id: number; title: string; teaser: string | null; topics: string[] }) => {
-    const found = new Set([...s.topics, ...matchTopics(`${s.title} ${s.teaser ?? ''}`, topics)]);
+  type Recent = { id: number; title: string; teaser: string | null; topics: string[]; news_summaries: { summary: string }[] | null };
+  const links = ((recent ?? []) as Recent[]).flatMap((s) => {
+    // Title, teaser and (once there is one) the AI summary: the summary often names the topic the headline only hints at.
+    const found = new Set([...s.topics, ...matchTopics(`${s.title} ${s.teaser ?? ''} ${s.news_summaries?.[0]?.summary ?? ''}`, topics)]);
     const ids = new Set([...found].flatMap((t) => idx.get(t) ?? []));
     return [...ids].map((position_id) => ({ item_id: s.id, position_id }));
   });
@@ -241,11 +246,11 @@ Deno.serve(async (req) => {
   // 4. Summaries for new items (most relevant first), within the budget
   const { data: open } = await db
     .from('news_items')
-    .select('id, title, teaser, source, lang, published_at, official, news_summaries(item_id), news_links(position_id)')
+    .select('id, title, teaser, source, lang, topics, published_at, official, news_summaries(item_id), news_links(position_id)')
     .gte('published_at', new Date(minDate).toISOString())
     .order('published_at', { ascending: false })
     .limit(500);
-  type Open = { id: number; title: string; teaser: string | null; source: string; lang: string | null; official: boolean; news_summaries: unknown[]; news_links: unknown[] };
+  type Open = { id: number; title: string; teaser: string | null; source: string; lang: string | null; topics: string[]; official: boolean; news_summaries: unknown[]; news_links: unknown[] };
   const unsummarised = ((open ?? []) as Open[])
     .filter((n) => !n.news_summaries?.length)
     .sort((a, b) => (b.news_links?.length ?? 0) - (a.news_links?.length ?? 0) || Number(b.official) - Number(a.official));
@@ -255,6 +260,7 @@ Deno.serve(async (req) => {
 
   let summarised = 0;
   let aiStop: string | null = null;
+  const themes = topics.slice(0, 40);
   for (let i = 0; i < todo.length && !aiStop; i += SUMMARY_BATCH) {
     const batch = todo.slice(i, i + SUMMARY_BATCH);
     const user = batch
@@ -262,14 +268,19 @@ Deno.serve(async (req) => {
         JSON.stringify({ id: n.id, sprache: n.lang ?? 'unbekannt', quelle: n.source, titel: n.title, anreisser: n.teaser ?? null }),
       )
       .join('\n');
-    const res = await askJson<{ items: { id: number; summary: string; importance: number; headline_only: boolean }[] }>(db, settings.aiBudgetUsdMonth, {
+    const res = await askJson<{ items: { id: number; summary: string; importance: number; headline_only: boolean; topics?: string[] }[] }>(db, settings.aiBudgetUsdMonth, {
       system: `Du fasst Wirtschafts- und Börsenmeldungen für einen privaten Tagesüberblick zusammen.
-Für jede Meldung: summary = 2 bis 3 Sätze (höchstens 450 Zeichen), so ausführlich, wie der gelieferte Text es hergibt, importance = 1 bis 5
-(5: Zinsentscheide, wichtige Konjunkturdaten, Quartalszahlen großer Unternehmen, Übernahmen, Regulierung;
-1: Meinungsstücke, Werbung, Wiederholungen, Ratgeber).
+Für jede Meldung: summary = 2 bis 3 Sätze (höchstens 450 Zeichen), so ausführlich, wie der gelieferte Text es hergibt, importance = 1 bis 5:
+5: Zinsentscheide, wichtige Konjunkturdaten, Quartalszahlen großer Unternehmen, Übernahmen, Regulierung, große Marktbewegungen;
+4: klar marktrelevant (Branchen, Rohstoffe, Notenbankreden, Handelspolitik);
+3: normale Wirtschaftsmeldung mit Bezug zu Märkten oder Unternehmen;
+2: nur am Rand für Anleger interessant (Lokales, Einzelfälle, Verbraucherthemen);
+1: kein Nutzen für Anleger (Meinungsstücke, Ratgeber, Werbung, Wiederholungen, Sport, Promis, Vermischtes).
+Im Zweifel eher niedriger bewerten: Der Leser will wenig Unwichtiges sehen.
+topics = die Themen aus "meine_themen", die in der Meldung wirklich vorkommen oder von ihr deutlich berührt werden (höchstens 3, auch sinngemäß: "Fed senkt Leitzins" gehört zu "Zinsen" und "USA"). Passt keines, eine leere Liste.
 ${RULES}`,
-      user: `Meldungen (eine JSON-Zeile pro Meldung):\n${user}`,
-      maxTokens: 4500,
+      user: `${themes.length ? `meine_themen: ${JSON.stringify(themes)}\n` : ''}Meldungen (eine JSON-Zeile pro Meldung):\n${user}`,
+      maxTokens: 5500,
       schema: {
         type: 'object',
         additionalProperties: false,
@@ -280,12 +291,13 @@ ${RULES}`,
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['id', 'summary', 'importance', 'headline_only'],
+              required: ['id', 'summary', 'importance', 'headline_only', 'topics'],
               properties: {
                 id: { type: 'integer' },
                 summary: { type: 'string' },
                 importance: { type: 'integer', enum: [1, 2, 3, 4, 5] },
                 headline_only: { type: 'boolean' },
+                topics: { type: 'array', items: themes.length ? { type: 'string', enum: themes } : { type: 'string' } },
               },
             },
           },
@@ -308,6 +320,19 @@ ${RULES}`,
       }));
     if (summaries.length) await db.from('news_summaries').upsert(summaries, { onConflict: 'item_id', ignoreDuplicates: true });
     summarised += summaries.length;
+
+    // Topics the AI saw in the item (meaning, not only words): store them with the item and link the positions right away.
+    for (const s of res.data.items) {
+      const item = batch.find((n: { id: number }) => n.id === s.id) as Open | undefined;
+      const found = (s.topics ?? []).filter((t) => idx.has(t));
+      if (!item || !found.length || !valid.has(s.id)) continue;
+      const merged = [...new Set([...item.topics, ...found])];
+      if (merged.length === item.topics.length) continue;
+      await db.from('news_items').update({ topics: merged }).eq('id', s.id);
+      const positionIds = new Set(found.flatMap((t) => idx.get(t) ?? []));
+      const { error } = await db.from('news_links').upsert([...positionIds].map((position_id) => ({ item_id: s.id, position_id })), { onConflict: 'item_id,position_id', ignoreDuplicates: true });
+      if (error) console.error('news_links (ai topics) upsert failed', error.message);
+    }
   }
 
   // 5. Live blog (afternoon and evening, Berlin time)

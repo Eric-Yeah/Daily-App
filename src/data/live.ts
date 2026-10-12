@@ -140,6 +140,55 @@ export async function loadWrap(now: Date, kind?: WrapKind): Promise<Block<LiveWr
   return empty('Noch kein Marktüberblick.');
 }
 
+export interface OpenMover {
+  name: string;
+  changePct: number;
+  reason: string | null;
+  source: { name: string; url: string } | null;
+}
+
+export interface LiveMarketOpen {
+  createdAt: Date;
+  asOf: Date;
+  headline: string | null;
+  text: string | null;
+  indices: { name: string; changePct: number }[];
+  gainers: OpenMover[];
+  losers: OpenMover[];
+}
+
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+function movers(raw: unknown): OpenMover[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((m: { name?: unknown; changePct?: unknown; reason?: unknown; source?: { name?: unknown; url?: unknown } | null }) => {
+    if (typeof m?.name !== 'string' || !isNum(m.changePct)) return [];
+    const source = typeof m.source?.name === 'string' && typeof m.source.url === 'string' ? { name: m.source.name, url: m.source.url } : null;
+    return [{ name: m.name, changePct: m.changePct, reason: typeof m.reason === 'string' && m.reason ? m.reason : null, source }];
+  });
+}
+
+/** The market start update ("Marktstart", about 09:30) of today. Empty (and the card stays hidden) until it was written. */
+export async function loadMarketOpen(now: Date): Promise<Block<LiveMarketOpen>> {
+  const { data, error } = await daily().from('briefings').select('created_at,content').eq('kind', 'open').eq('day', todayIso(now)).maybeSingle();
+  if (error) return failed('Marktstart gerade nicht verfügbar.');
+  const c = data?.content as { asOf?: string; headline?: unknown; text?: unknown; indices?: unknown; gainers?: unknown; losers?: unknown } | undefined;
+  if (!data || !c) return empty('Noch kein Marktstart.');
+  const indices = Array.isArray(c.indices) ? (c.indices as { name?: unknown; changePct?: unknown }[]).flatMap((i) => (typeof i.name === 'string' && isNum(i.changePct) ? [{ name: i.name, changePct: i.changePct }] : [])) : [];
+  const gainers = movers(c.gainers);
+  const losers = movers(c.losers);
+  if (!indices.length && !gainers.length && !losers.length) return empty('Noch kein Marktstart.');
+  return ok({
+    createdAt: new Date(data.created_at as string),
+    asOf: new Date(c.asOf ?? (data.created_at as string)),
+    headline: typeof c.headline === 'string' && c.headline ? c.headline : null,
+    text: typeof c.text === 'string' && c.text ? c.text : null,
+    indices,
+    gainers,
+    losers,
+  });
+}
+
 export interface LiveBlogEntry {
   id: number;
   createdAt: Date;
@@ -175,7 +224,7 @@ export function rankLive(items: LiveNews[]): LiveNews[] {
 async function depotNews(sinceIso: string, max: number): Promise<Block<NewsItem[]>> {
   const b = await loadNews(sinceIso);
   if (b.status !== 'ok') return b;
-  const relevant = rankLive(b.data.filter((n) => n.positions > 0 || n.official)).slice(0, max);
+  const relevant = rankLive(b.data.filter((n) => n.official || (n.positions > 0 && (n.importance ?? 2) >= 2))).slice(0, max);
   return relevant.length ? ok(relevant) : empty('Noch keine Meldungen zu deinen Themen. Sie werden alle 30 Minuten abgerufen.');
 }
 

@@ -1579,3 +1579,50 @@ a.button--secondary:hover {
     width: min(608px, calc(100vw - 232px));
   }
 }
+
+/* ---------- Market start (Marktstart) ---------- */
+.movers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.movers h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--link);
+}
+.movers ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mover {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: baseline;
+}
+.mover__name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.mover__pct {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mover__reason {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--text-soft);
+}
+.mover__reason a {
+  font-weight: 700;
+  white-space: nowrap;
+}

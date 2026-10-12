@@ -6,6 +6,9 @@ import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
 import { liveCandidates, parseLive } from './liveblog.ts';
 import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseConclusion, parseDetail } from './article.ts';
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
+import { isNoise } from './newsNoise.ts';
+import { buildOpen, newsAbout, parseOpen, pickMovers, quoteOf } from './marketopen.ts';
+import type { ChartData } from './prices.ts';
 
 describe('RSS', () => {
   it('reads RSS 2.0 with CDATA, entities and HTML teasers', () => {
@@ -46,7 +49,7 @@ describe('RSS', () => {
 describe('topics', () => {
   const topics = ['Halbleiter', 'USA', 'Zinsen', 'KI und Robotik', 'Gold'];
   it('matches whole words incl. synonyms', () => {
-    expect(matchTopics('Nvidia-Aktie steigt kräftig', topics)).toEqual(['Halbleiter']);
+    expect(matchTopics('Nvidia-Aktie steigt kräftig', topics)).toEqual(['Halbleiter', 'KI und Robotik']);
     expect(matchTopics('Fed signals rate cut as Wall Street rallies', topics).sort()).toEqual(['USA', 'Zinsen']);
     expect(matchTopics('Die EZB lässt den Leitzins unverändert', topics)).toEqual(['Zinsen']);
   });
@@ -333,5 +336,91 @@ describe('Artikel für die ausführliche Zusammenfassung', () => {
     const user = detailUser({ title: 'T', source: 'S', lang: 'de' }, 'Text', { topics: ['USA', 'Technologie'], positions: 3 });
     expect(user).toContain('Themen deines Depots, die im Artikel vorkommen: USA, Technologie (betrifft 3 Positionen)');
     expect(detailUser({ title: 'T', source: 'S', lang: 'de' }, 'Text')).toContain('vorkommen: keine');
+  });
+});
+
+describe('wider topic matching', () => {
+  it('connects general market news with broad index topics', () => {
+    expect(matchTopics('Dax startet im Plus, Anleger warten auf US-Zahlen', ['Deutschland', 'Welt'])).toEqual(['Deutschland', 'Welt']);
+    expect(matchTopics('Trump kündigt neue Zölle an', ['USA', 'Welt'])).toEqual(['USA', 'Welt']);
+    expect(matchTopics('Rechenzentren treiben den Strombedarf', ['KI und Robotik'])).toEqual(['KI und Robotik']);
+  });
+  it('does not match everything that mentions money', () => {
+    expect(matchTopics('Firma zahlt 20 Millionen Euro und 5 Millionen Dollar Strafe', ['Europa', 'USA'])).toEqual([]);
+  });
+});
+
+describe('news noise', () => {
+  it('drops sport, lifestyle and similar items', () => {
+    expect(isNoise({ title: 'Bundesliga: Bayern gewinnt klar', url: 'https://www.spiegel.de/sport/x' })).toBe(true);
+    expect(isNoise({ title: 'Tagesgeld im Vergleich', url: 'https://www.theguardian.com/lifeandstyle/2026/x' })).toBe(true);
+    expect(isNoise({ title: 'Horoskop für heute', url: 'https://example.com/a' })).toBe(true);
+  });
+  it('keeps business news and anything official', () => {
+    expect(isNoise({ title: 'DAX schließt höher, Siemens Energy im Aufwind', url: 'https://www.faz.net/finanzen/x' })).toBe(false);
+    expect(isNoise({ title: 'Bundesliga-Klubs und Anleihen', url: 'https://example.com/a', official: true })).toBe(false);
+  });
+});
+
+describe('market start update', () => {
+  const day = '2026-10-12';
+  const chart = (prev: number, price: number, ts: string): ChartData => ({ symbol: 'X', currency: 'EUR', gmtOffsetSec: 7200, prevClose: prev, points: [{ ts, price }] });
+  const sym = { symbol: 'SAP.DE', name: 'SAP' };
+
+  it('computes the change only for a price from today', () => {
+    expect(quoteOf(sym, chart(100, 103, '2026-10-12T07:15:00Z'), day)?.changePct).toBeCloseTo(3);
+    expect(quoteOf(sym, chart(100, 103, '2026-10-09T15:15:00Z'), day)).toBeNull();
+    expect(quoteOf(sym, { ...chart(100, 103, '2026-10-12T07:15:00Z'), prevClose: null }, day)).toBeNull();
+    expect(quoteOf(sym, null, day)).toBeNull();
+  });
+
+  const q = (symbol: string, name: string, changePct: number) => ({ symbol, name, changePct, ts: '2026-10-12T07:15:00Z' });
+  const quotes = [q('A', 'A', 4), q('B', 'B', 2.2), q('C', 'C', 0.2), q('D', 'D', -0.3), q('E', 'E', -1.5), q('F', 'F', -6), q('G', 'G', 1), q('H', 'H', 0.9)];
+
+  it('picks the biggest winners and losers above the minimum', () => {
+    const m = pickMovers(quotes);
+    expect(m.gainers.map((x) => x.symbol)).toEqual(['A', 'B', 'G']);
+    expect(m.losers.map((x) => x.symbol)).toEqual(['F', 'E']);
+  });
+
+  const news = [
+    { id: 1, title: 'SAP hebt Prognose an', url: 'https://example.com/1', source: 'Handelsblatt', importance: 4, summary: 'SAP erwartet mehr Cloud-Umsatz.', positions: 0, publishedAt: '2026-10-12T06:00:00Z', official: false },
+    { id: 2, title: 'Ölpreis fällt', url: 'https://example.com/2', source: 'CNBC', importance: 3, summary: null, positions: 0, publishedAt: '2026-10-12T06:10:00Z', official: false },
+  ];
+
+  it('finds news that name a mover (whole words)', () => {
+    expect(newsAbout([q('SAP.DE', 'SAP', 3)], news).map((n) => n.id)).toEqual([1]);
+    expect(newsAbout([q('SAP.DE', 'SAP', 3)], [{ ...news[1], title: 'Sapphire Ventures investiert' }])).toEqual([]);
+  });
+
+  it('accepts a reason only for a real mover and a real news item', () => {
+    const movers = [q('SAP.DE', 'SAP', 3), q('BMW.DE', 'BMW', -2)];
+    const parsed = parseOpen(
+      {
+        headline: 'DAX startet freundlich',
+        text: 'Der DAX liegt im Plus.',
+        reasons: [
+          { symbol: 'SAP.DE', reason: 'Laut Handelsblatt hebt SAP die Prognose an.', item_id: 1 },
+          { symbol: 'BMW.DE', reason: 'Erfunden', item_id: 99 },
+          { symbol: 'XYZ', reason: 'Unbekannt', item_id: 1 },
+          { symbol: 'BMW.DE', reason: 'Eine konkrete Meldung liegt nicht vor.', item_id: 1 },
+          { symbol: 'BMW.DE', reason: 'Laut CNBC fällt der Ölpreis.', item_id: 2 },
+        ],
+      },
+      movers,
+      news,
+    );
+    expect([...(parsed?.reasons.keys() ?? [])]).toEqual(['SAP.DE']);
+    expect(parsed?.reasons.get('SAP.DE')?.source).toEqual({ name: 'Handelsblatt', url: 'https://example.com/1' });
+    expect(parseOpen({ headline: '', text: 'x', reasons: [] }, movers, news)).toBeNull();
+    expect(parseOpen(null, movers, news)).toBeNull();
+  });
+
+  it('builds the content with and without the AI text', () => {
+    const base = { day, now: new Date('2026-10-12T07:40:00Z'), asOf: '2026-10-12T07:15:00Z', indices: [{ name: 'DAX', changePct: 0.456 }], gainers: [q('SAP.DE', 'SAP', 3.456)], losers: [] };
+    const plain = buildOpen({ ...base, ai: null });
+    expect(plain).toMatchObject({ ai: false, headline: null, text: null, indices: [{ name: 'DAX', changePct: 0.46 }], gainers: [{ name: 'SAP', changePct: 3.46, reason: null, source: null }] });
+    const withAi = buildOpen({ ...base, ai: parseOpen({ headline: 'H', text: 'T', reasons: [{ symbol: 'SAP.DE', reason: 'Grund', item_id: 1 }] }, [q('SAP.DE', 'SAP', 3.456)], news) });
+    expect(withAi).toMatchObject({ ai: true, headline: 'H', text: 'T', gainers: [{ reason: 'Grund' }] });
   });
 });

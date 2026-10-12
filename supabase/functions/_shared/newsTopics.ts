@@ -3,31 +3,49 @@
 
 /** Extra search terms for common topics (German and English). Unknown topics search for themselves. */
 const SYNONYMS: Record<string, string[]> = {
-  Welt: ['Weltwirtschaft', 'global economy', 'MSCI World', 'Weltbörsen', 'world stocks'],
-  USA: ['USA', 'US-Wirtschaft', 'Wall Street', 'U.S. economy', 'US economy', 'S&P 500', 'Dow Jones', 'Nasdaq'],
-  'S&P 500': ['S&P 500', 'S&P500'],
-  'Nasdaq 100': ['Nasdaq'],
-  Industrieländer: [],
-  Europa: ['Europa', 'Eurozone', 'Euro-Raum', 'Euroraum', 'Europe', 'euro zone', 'eurozone', 'Stoxx'],
-  Deutschland: ['Deutschland', 'deutsche Wirtschaft', 'Germany', 'German economy', 'DAX', 'Bundesregierung'],
-  DAX: ['DAX'],
-  Schwellenländer: ['Schwellenländer', 'Schwellenland', 'emerging markets', 'emerging market'],
-  China: ['China', 'chinesisch', 'Chinese', 'Peking', 'Beijing'],
-  Indien: ['Indien', 'India', 'indisch', 'Indian'],
-  Japan: ['Japan', 'japanisch', 'Japanese', 'Nikkei', 'Bank of Japan'],
-  Halbleiter: ['Halbleiter', 'Chip', 'Chips', 'Chiphersteller', 'semiconductor', 'semiconductors', 'chipmaker', 'Nvidia', 'TSMC', 'ASML'],
-  Technologie: ['Technologie', 'Tech-Werte', 'Techwerte', 'tech stocks', 'technology stocks', 'Big Tech'],
-  'KI und Robotik': ['künstliche Intelligenz', 'KI', 'artificial intelligence', 'AI', 'Robotik', 'robotics'],
-  'Erneuerbare Energien': ['erneuerbare Energien', 'Solar', 'Windkraft', 'renewable energy', 'clean energy'],
-  Gesundheit: ['Pharma', 'Gesundheit', 'Biotech', 'healthcare', 'pharmaceutical'],
-  Dividenden: ['Dividende', 'Dividenden', 'dividend', 'dividends'],
-  Nebenwerte: ['Nebenwerte', 'small caps', 'small-cap'],
-  Gold: ['Gold', 'Goldpreis', 'gold price'],
-  Anleihen: ['Anleihen', 'Anleihe', 'Rendite', 'Renditen', 'bond', 'bonds', 'Treasury', 'yields'],
-  Zinsen: ['Zinsen', 'Zins', 'Leitzins', 'Zinsentscheid', 'Notenbank', 'EZB', 'Fed', 'interest rate', 'interest rates', 'rate cut', 'rate hike', 'central bank', 'Federal Reserve', 'ECB', 'Inflation'],
-  Immobilien: ['Immobilien', 'real estate', 'REIT'],
-  Cybersicherheit: ['Cybersicherheit', 'Cyberangriff', 'cybersecurity', 'cyber attack'],
-  Rüstung: ['Rüstung', 'Rüstungskonzern', 'defense stocks', 'defence', 'Rheinmetall'],
+  Welt: [
+    'Weltwirtschaft', 'global economy', 'MSCI World', 'Weltbörsen', 'world stocks', 'Weltmarkt', 'Börsen', 'Aktienmärkte', 'Aktienmarkt', 'Anleger',
+    'global markets', 'global stocks', 'stock market', 'stock markets', 'Wall Street', 'Dow Jones', 'Nikkei', 'DAX', 'Dax', 'Nasdaq', 'S&P 500', 'Zölle', 'Handelskrieg', 'tariffs', 'trade war',
+  ],
+  USA: [
+    'USA', 'US-Wirtschaft', 'Wall Street', 'U.S. economy', 'US economy', 'S&P 500', 'Dow Jones', 'Nasdaq', 'Trump', 'US-Börse', 'US-Börsen', 'US-Notenbank', 'US-Regierung', 'US-Präsident',
+    'Zölle', 'tariffs', 'Treasury', 'White House', 'Weißes Haus', 'Washington',
+  ],
+  'S&P 500': ['S&P 500', 'S&P500', 'Wall Street', 'US-Börse', 'US-Börsen', 'Dow Jones'],
+  'Nasdaq 100': ['Nasdaq', 'Big Tech', 'Magnificent Seven', 'Wall Street'],
+  Industrieländer: ['Industrieländer', 'Industriestaaten', 'G7', 'OECD', 'developed markets', 'Weltwirtschaft', 'Wall Street'],
+  Europa: ['Europa', 'Eurozone', 'Euro-Raum', 'Euroraum', 'Europe', 'euro zone', 'eurozone', 'Stoxx', 'EU', 'EZB', 'ECB', 'Brüssel', 'Brussels', 'Frankreich', 'Italien', 'European', 'Bank of England'],
+  Deutschland: [
+    'Deutschland', 'deutsche Wirtschaft', 'Germany', 'German economy', 'DAX', 'Dax', 'MDax', 'Bundesregierung', 'Bundesbank', 'Bundestag', 'Merz', 'Ifo', 'ZEW', 'Börse Frankfurt', 'Frankfurter Börse',
+  ],
+  DAX: ['DAX', 'Dax', 'MDax', 'Frankfurter Börse', 'Börse Frankfurt'],
+  Schwellenländer: [
+    'Schwellenländer', 'Schwellenland', 'emerging markets', 'emerging market', 'Brasilien', 'Brazil', 'Südafrika', 'Mexiko', 'Türkei', 'Indonesien', 'Vietnam', 'Taiwan', 'Südkorea', 'Korea',
+  ],
+  China: ['China', 'chinesisch', 'Chinese', 'Peking', 'Beijing', 'Hongkong', 'Hong Kong', 'Hang Seng', 'Yuan', 'Xi Jinping', 'Shanghai'],
+  Indien: ['Indien', 'India', 'indisch', 'Indian', 'Sensex', 'Nifty', 'Rupie'],
+  Japan: ['Japan', 'japanisch', 'Japanese', 'Nikkei', 'Bank of Japan', 'Yen', 'Tokio', 'Tokyo'],
+  Halbleiter: ['Halbleiter', 'Chip', 'Chips', 'Chiphersteller', 'semiconductor', 'semiconductors', 'chipmaker', 'Nvidia', 'TSMC', 'ASML', 'Infineon', 'AMD', 'Intel', 'Broadcom', 'Micron', 'Samsung'],
+  Technologie: [
+    'Technologie', 'Tech-Werte', 'Techwerte', 'tech stocks', 'technology stocks', 'Big Tech', 'Nasdaq', 'Apple', 'Microsoft', 'Google', 'Alphabet', 'Meta', 'Amazon', 'Tesla', 'Software', 'SAP', 'OpenAI',
+  ],
+  'KI und Robotik': [
+    'künstliche Intelligenz', 'KI', 'artificial intelligence', 'AI', 'Robotik', 'robotics', 'ChatGPT', 'OpenAI', 'Anthropic', 'Nvidia', 'Rechenzentren', 'Rechenzentrum', 'data center', 'data centers', 'Roboter',
+  ],
+  'Erneuerbare Energien': [
+    'erneuerbare Energien', 'Solar', 'Windkraft', 'renewable energy', 'clean energy', 'Photovoltaik', 'Wasserstoff', 'hydrogen', 'Energiewende', 'Windenergie', 'wind power', 'Vestas', 'Siemens Energy',
+  ],
+  Gesundheit: [
+    'Pharma', 'Gesundheit', 'Biotech', 'healthcare', 'pharmaceutical', 'Medikament', 'Arzneimittel', 'FDA', 'Novo Nordisk', 'Pfizer', 'Roche', 'Novartis', 'Bayer', 'Impfstoff', 'Abnehmspritze', 'GLP-1',
+  ],
+  Dividenden: ['Dividende', 'Dividenden', 'dividend', 'dividends', 'Ausschüttung', 'Ausschüttungen'],
+  Nebenwerte: ['Nebenwerte', 'small caps', 'small-cap', 'MDax', 'SDax', 'Mittelstand'],
+  Gold: ['Gold', 'Goldpreis', 'gold price', 'Edelmetalle', 'Edelmetall', 'precious metals', 'Silber', 'Unze'],
+  Anleihen: ['Anleihen', 'Anleihe', 'Rendite', 'Renditen', 'bond', 'bonds', 'Treasury', 'yields', 'Staatsanleihen', 'Bundesanleihen'],
+  Zinsen: ['Zinsen', 'Zins', 'Leitzins', 'Zinsentscheid', 'Notenbank', 'Notenbanken', 'EZB', 'Fed', 'interest rate', 'interest rates', 'rate cut', 'rate hike', 'central bank', 'Federal Reserve', 'ECB', 'Inflation', 'Teuerung', 'Geldpolitik'],
+  Immobilien: ['Immobilien', 'real estate', 'REIT', 'Immobilienmarkt', 'Mieten', 'Baufinanzierung', 'Hypothek', 'mortgage', 'housing'],
+  Cybersicherheit: ['Cybersicherheit', 'Cyberangriff', 'cybersecurity', 'cyber attack', 'Hackerangriff', 'Datenleck', 'Ransomware', 'CrowdStrike'],
+  Rüstung: ['Rüstung', 'Rüstungskonzern', 'defense stocks', 'defence', 'Rheinmetall', 'Verteidigung', 'Bundeswehr', 'NATO', 'Hensoldt', 'Renk'],
 };
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

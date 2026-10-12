@@ -2,6 +2,7 @@ import type { JSX } from 'preact';
 import { BlockView } from '../../components/Block';
 import { AlertCard, DayCard, NewsList, TaskCard, TrainingCard } from '../../components/Content';
 import { Header, useGreeting } from '../../components/Header';
+import { MarketOpenCard } from '../../components/MarketOpen';
 import { WrapCard } from '../../components/Wrap';
 import { DepotHeadline, EventList, GroupBars, IndexStrip, KpiTiles, MissingNote, NumberedCard, Sparkline } from '../../components/Market';
 import type { DataSource } from '../../data/types';
@@ -30,6 +31,8 @@ export function Morning({ source, now, switcher }: { source: DataSource; now: Da
       <BlockView block={data?.indices} skeletonHeight={60} hideWhenEmpty>
         {(items) => <IndexStrip items={items} />}
       </BlockView>
+
+      <MarketOpenCard />
 
       <WrapCard kind="morning" />
 
