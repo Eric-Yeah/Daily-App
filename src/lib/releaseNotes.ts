@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.14.2',
+    date: '2026-10-12',
+    title: 'Indexleiste gefüllt und laufend',
+    notes: [
+      'Die Leiste mit DAX, Euro Stoxx 50 und den anderen Indizes füllt jetzt auf dem Mac die ganze Breite aus, statt links halb leer zu bleiben.',
+      'Auf dem Handy, wo nicht alle Kacheln nebeneinander passen, läuft die Leiste jetzt langsam im Kreis durch. Tippst du sie an (oder fährst mit der Maus darüber), hält sie an.',
+      'Ist in iOS „Bewegung reduzieren“ an, bleibt sie stehen und lässt sich wie bisher seitlich wischen.',
+    ],
+  },
+  {
     version: '0.14.1',
     date: '2026-10-12',
     title: 'Besser auf Mac und iPad',

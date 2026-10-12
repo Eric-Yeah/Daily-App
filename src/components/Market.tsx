@@ -1,4 +1,5 @@
 import type { ComponentChildren } from 'preact';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { DepotSummary, GroupMove, IndexQuote, IntradaySeries, Kpi, MarketEvent, SeriesPoint } from '../data/types';
 import { CHART_WIDTH, sessionChart, sparkline } from '../lib/chart';
 import { parseHHMM, sessionFraction } from '../lib/time';
@@ -27,18 +28,69 @@ function Pct({ value, decimals = 1, withArrow = false }: { value: number | null;
 
 const trendClass = (v: number | null, decimals = 1) => (v === null ? 'flat' : trend(v, decimals));
 
+const STRIP_GAP = 8; // keep in sync with .index-tile margin in components.css
+const STRIP_SPEED = 26; // px per second, slow enough to read
+
+type StripMode = 'fill' | 'marquee' | 'scroll';
+
+/**
+ * Index tiles. When they fit, they share the whole row evenly (Mac, wide windows).
+ * When they do not fit (phone), they run slowly past like a ticker, in a loop; it pauses while touched or hovered.
+ * With "reduce motion" they stay still and can be swiped instead.
+ */
 export function IndexStrip({ items }: { items: IndexQuote[] }) {
+  const box = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLUListElement>(null);
+  const [mode, setMode] = useState<StripMode>('fill');
+  const [loop, setLoop] = useState(0); // width of one pass in px
+
+  useLayoutEffect(() => {
+    const el = box.current;
+    const ul = track.current;
+    if (!el || !ul) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const measure = () => {
+      const tiles = [...ul.children].slice(0, items.length) as HTMLElement[];
+      const natural = tiles.reduce((sum, t) => sum + t.offsetWidth + STRIP_GAP, 0) - STRIP_GAP;
+      const room = el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) * 2;
+      // In fill mode the tiles are stretched, so "does it still fit" means: nothing sticks out.
+      const overflows = mode === 'fill' ? ul.scrollWidth > ul.clientWidth + 1 : natural > room + 1;
+      const next: StripMode = !overflows ? 'fill' : reduce.matches ? 'scroll' : 'marquee';
+      setMode(next);
+      setLoop(next === 'marquee' ? natural + STRIP_GAP : 0);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    reduce.addEventListener('change', measure);
+    return () => {
+      ro.disconnect();
+      reduce.removeEventListener('change', measure);
+    };
+  }, [items, mode]);
+
+  const tiles = (hidden: boolean) =>
+    items.map((i) => (
+      <li key={(hidden ? 'copy-' : '') + i.name} class="index-tile" aria-hidden={hidden ? 'true' : undefined}>
+        <span class="index-tile__name">{i.name}</span>
+        <span class={`index-tile__change ${trendClass(i.changePct)}`}>
+          <Pct value={i.changePct} />
+        </span>
+      </li>
+    ));
+
   return (
-    <ul class="index-strip" aria-label="Indizes">
-      {items.map((i) => (
-        <li key={i.name} class="index-tile">
-          <span class="index-tile__name">{i.name}</span>
-          <span class={`index-tile__change ${trendClass(i.changePct)}`}>
-            <Pct value={i.changePct} />
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div ref={box} class={`index-strip index-strip--${mode}`}>
+      <ul
+        ref={track}
+        class="index-track"
+        aria-label="Indizes"
+        style={mode === 'marquee' && loop > 0 ? { '--loop': `${loop}px`, '--loop-time': `${Math.round(loop / STRIP_SPEED)}s` } : undefined}
+      >
+        {tiles(false)}
+        {mode === 'marquee' && tiles(true)}
+      </ul>
+    </div>
   );
 }
 

@@ -145,19 +145,60 @@
 
 /* ---------- Index strip ---------- */
 .index-strip {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
+  overflow: hidden;
   margin: 0 calc(-1 * var(--page-pad-x));
   padding: 0 var(--page-pad-x);
+}
+.index-track {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Fits: tiles share the row. */
+.index-strip--fill .index-tile {
+  flex: 1 0 auto;
+}
+.index-strip--fill .index-tile:last-child {
+  margin-right: 0;
+}
+/* Does not fit: slow endless run (one copy of the tiles is appended, then the track jumps back unnoticed). */
+.index-strip--marquee {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--page-pad-x), #000 calc(100% - var(--page-pad-x)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--page-pad-x), #000 calc(100% - var(--page-pad-x)), transparent);
+}
+.index-strip--marquee .index-track {
+  width: max-content;
+  animation: index-run var(--loop-time, 20s) linear infinite;
+}
+.index-strip--marquee .index-track:active {
+  animation-play-state: paused;
+}
+@media (hover: hover) {
+  .index-strip--marquee .index-track:hover {
+    animation-play-state: paused;
+  }
+}
+/* Reduce motion: no running, swipe instead. */
+.index-strip--scroll {
+  overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
-.index-strip::-webkit-scrollbar {
+.index-strip--scroll::-webkit-scrollbar {
   display: none;
+}
+.index-strip--scroll .index-track {
+  width: max-content;
+}
+@keyframes index-run {
+  to {
+    transform: translateX(calc(-1 * var(--loop)));
+  }
 }
 .index-tile {
   flex: none;
+  margin-right: 8px;
   background: var(--card);
   border-radius: var(--radius-tile);
   padding: 10px 14px;
@@ -1021,7 +1062,6 @@
 }
 
 /* List resets for semantic lists */
-.index-strip,
 .groups,
 .tiles-2,
 .numbered-list,
