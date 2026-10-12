@@ -174,7 +174,11 @@ describe('WKN lookup via OpenFIGI', () => {
     const raw = resp([{ ticker: 'AAA', exchCode: 'SW' }, { ticker: 'AAA', exchCode: 'GY' }]);
     expect(pickFigiListing(raw)).toEqual({ ticker: 'AAA', exchange: 'XETRA', yahooSymbol: 'AAA.DE' });
   });
-  it('returns null without a Xetra listing, for odd tickers and for broken responses', () => {
+  it('falls back to the German composite listing for ETFs and prefers Xetra when both exist', () => {
+    expect(pickFigiListing(resp([{ ticker: 'ETF1', exchCode: 'GR' }, { ticker: 'ETF1', exchCode: 'GF' }]))).toEqual({ ticker: 'ETF1', exchange: 'XETRA', yahooSymbol: 'ETF1.DE' });
+    expect(pickFigiListing(resp([{ ticker: 'AAA', exchCode: 'GR' }, { ticker: 'BBB', exchCode: 'GY' }]))?.ticker).toBe('BBB');
+  });
+  it('returns null without a German listing, for odd tickers and for broken responses', () => {
     expect(pickFigiListing(resp([{ ticker: 'AAA', exchCode: 'SW' }]))).toBeNull();
     expect(pickFigiListing(resp([{ ticker: 'a b', exchCode: 'GY' }]))).toBeNull();
     expect(pickFigiListing([{ warning: 'No identifier found.' }])).toBeNull();

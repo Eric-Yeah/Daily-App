@@ -9,6 +9,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.11.2',
+    date: '2026-10-12',
+    title: 'Kurssymbol auch für ETFs per WKN',
+    notes: [
+      'Behoben: Die Symbolsuche per WKN fand für ETFs nichts. Daily nimmt jetzt neben der Xetra-Notierung auch die deutsche Sammelnotierung, sie hat bei ETFs denselben Kürzel.',
+      'Der Hinweis im Depot-Formular passt jetzt dazu: Das Kurssymbol wird aus der WKN gesucht, nur wenn nichts gefunden wird, trägst du es selbst ein.',
+    ],
+  },
+  {
     version: '0.11.1',
     date: '2026-10-12',
     title: 'Kurse auch für Positionen nur mit WKN',

@@ -157,7 +157,7 @@ function PositionForm({
             placeholder="A0RPWH"
           />
         </Field>
-        <Field label="Kurssymbol (leer = automatisch per ISIN)" error={errors.symbol}>
+        <Field label="Kurssymbol (leer = automatisch per ISIN oder WKN)" error={errors.symbol}>
           <input
             class="input mono"
             value={symbol}
@@ -169,7 +169,7 @@ function PositionForm({
           />
         </Field>
         {!isin.trim() && wkn.trim() && !symbol.trim() && (
-          <p class="note">Über die WKN allein wird kein Kurssymbol gefunden. Trag es hier selbst ein oder ergänze die ISIN.</p>
+          <p class="note">Das Kurssymbol wird aus der WKN gesucht. Findet Daily keins, trag es hier selbst ein oder ergänze die ISIN.</p>
         )}
         <div class="field-row">
           <Field label="Stückzahl" error={errors.quantity}>

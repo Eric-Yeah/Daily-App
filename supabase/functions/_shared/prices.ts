@@ -170,8 +170,11 @@ export function pickEodhdListing(list: EodhdListing[]): Resolved | null {
   return null;
 }
 
-// OpenFIGI (free, no key) maps a WKN to listings; Yahoo and EODHD find nothing by WKN. exchCode GY = Xetra.
+// OpenFIGI (free, no key) maps a WKN to listings; Yahoo and EODHD find nothing by WKN.
+// exchCode GY = Xetra (shares only); ETFs have no GY entry, but their German composite listing (GR) carries the
+// same ticker as Xetra, so GR is the fallback.
 export const FIGI_URL = 'https://api.openfigi.com/v3/mapping';
+const FIGI_GERMAN = ['GY', 'GR'];
 
 export const figiBody = (wkn: string) => JSON.stringify([{ idType: 'ID_WERTPAPIER', idValue: wkn }]);
 
@@ -179,9 +182,11 @@ export const figiBody = (wkn: string) => JSON.stringify([{ idType: 'ID_WERTPAPIE
 export function pickFigiListing(raw: unknown): Resolved | null {
   const data = (Array.isArray(raw) ? (raw[0] as { data?: unknown } | undefined)?.data : null) ?? [];
   if (!Array.isArray(data)) return null;
-  for (const r of data as Record<string, unknown>[]) {
-    if (r?.exchCode === 'GY' && typeof r.ticker === 'string' && /^[A-Z0-9]{1,8}$/.test(r.ticker)) {
-      return { ticker: r.ticker, exchange: 'XETRA', yahooSymbol: `${r.ticker}.DE` };
+  for (const code of FIGI_GERMAN) {
+    for (const r of data as Record<string, unknown>[]) {
+      if (r?.exchCode === code && typeof r.ticker === 'string' && /^[A-Z0-9]{1,8}$/.test(r.ticker)) {
+        return { ticker: r.ticker, exchange: 'XETRA', yahooSymbol: `${r.ticker}.DE` };
+      }
     }
   }
   return null;
