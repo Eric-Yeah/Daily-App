@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.16.3',
+    date: '2026-10-13',
+    title: 'Mehr aufgeräumt',
+    notes: ['Unter Mehr steht die Liste der früheren Versionen nicht mehr. Dort bleibt nur die aktuelle Versionsnummer als Kleingedrucktes. Nach einem Update zeigt Daily die Neuerungen weiterhin einmal an.'],
+  },
+  {
     version: '0.16.2',
     date: '2026-10-13',
     title: 'Vorlesen vorerst aus',

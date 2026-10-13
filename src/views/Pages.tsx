@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Header } from '../components/Header';
-import { ReleaseHistory } from '../components/Updates';
 import { formatDateLong, formatPct } from '../lib/format';
 import { currentSession, deletePasskey, listPasskeys, passkeysSupported, registerPasskey, signOut, useAuth, type PasskeyInfo } from '../lib/auth';
 import { biometricName, notificationSettingsHint } from '../lib/device';
@@ -104,11 +103,6 @@ export function MorePage() {
         <p class="disclaimer">{DISCLAIMER}</p>
         {isClockPinned && <p class="disclaimer">Testmodus: Die Uhrzeit ist über „?now=…“ festgelegt.</p>}
         <p class="disclaimer">Version {__APP_VERSION__}</p>
-      </section>
-
-      <section class="card gap-8">
-        <h2>Was ist neu</h2>
-        <ReleaseHistory />
       </section>
     </main>
   );

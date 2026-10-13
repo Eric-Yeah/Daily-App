@@ -66,19 +66,3 @@ function ReleaseNotes({ release, heading }: { release: (typeof RELEASES)[number]
     </div>
   );
 }
-
-/** Full history, for "Mehr". */
-export function ReleaseHistory() {
-  return (
-    <>
-      {RELEASES.map((r) => (
-        <details key={r.version} class="release-details">
-          <summary>
-            Version {r.version} · {r.date.split('-').reverse().join('.')}
-          </summary>
-          <ReleaseNotes release={r} heading={false} />
-        </details>
-      ))}
-    </>
-  );
-}

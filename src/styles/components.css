@@ -1534,12 +1534,6 @@ a.button--secondary:hover {
   line-height: 21px;
   color: var(--muted);
 }
-.release-details summary {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 14px;
-  padding: 6px 0;
-}
 
 /* ---------- Market overview and news filters ---------- */
 .wrap__headline {
@@ -1895,9 +1889,6 @@ a.button--secondary:hover {
   .fold:hover,
   .view-switcher__now:hover {
     filter: brightness(1.12);
-  }
-  .release-details summary:hover {
-    color: var(--link);
   }
 }
 
