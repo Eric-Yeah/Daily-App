@@ -134,7 +134,10 @@ export function setPrefs(patch: Partial<SpeechPrefs>): void {
 
 // ---------- Voices ----------
 
-export const speechSupported = (): boolean => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+/** Master switch: reading aloud is off until the cloud voice is set up. Set to true to bring the feature back. */
+export const SPEECH_ENABLED = false;
+
+export const speechSupported = (): boolean => SPEECH_ENABLED && typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 
 /** German voices, the better ones (enhanced/premium) first. */
 export function germanVoices(): SpeechSynthesisVoice[] {

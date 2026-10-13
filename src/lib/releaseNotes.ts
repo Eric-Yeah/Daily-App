@@ -9,6 +9,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.16.2',
+    date: '2026-10-13',
+    title: 'Vorlesen vorerst aus',
+    notes: [
+      'Das Vorlesen ist vorübergehend abgeschaltet: Die Taste „Briefing anhören“, der Player und die Einstellung unter Mehr → Vorlesen sind weg. Die Stimme wird später über Google Cloud neu eingerichtet.',
+    ],
+  },
+  {
     version: '0.16.1',
     date: '2026-10-13',
     title: 'Mittag/Nachmittag ab 10:30',
