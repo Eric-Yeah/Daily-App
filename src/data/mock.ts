@@ -209,9 +209,14 @@ export function createMockSource(): DataSource {
         indices: ok([
           { name: 'DAX', changePct: 0.2 },
           { name: 'S&P 500', changePct: 0.5 },
-          { name: 'MSCI World', changePct: 0.3 },
           { name: 'Nasdaq 100', changePct: 0.7 },
-          { name: 'MSCI EM', changePct: -0.4 },
+          { name: 'Dow Jones', changePct: 0.3 },
+          { name: 'MDAX', changePct: 0.4 },
+          { name: 'FTSE 100', changePct: -0.1 },
+          { name: 'Nikkei 225', changePct: 0.6 },
+          { name: 'Hang Seng', changePct: -0.4 },
+          { name: 'Brent', changePct: 1.2, price: '82,40 $' },
+          { name: 'WTI', changePct: 1.1, price: '78,15 $' },
         ]),
         important: ok([
           'Halbleiter-ETF liegt unter deiner Schwelle (−3,1 %)',
@@ -265,10 +270,14 @@ export function createMockSource(): DataSource {
         }),
         indices: ok([
           { name: 'DAX', changePct: 0.1 },
+          { name: 'MDAX', changePct: 0.3 },
+          { name: 'TecDAX', changePct: 0.2 },
           { name: 'Euro Stoxx 50', changePct: 0.2 },
-          { name: 'MSCI World', changePct: 0.3 },
+          { name: 'CAC 40', changePct: 0.1 },
+          { name: 'Nikkei 225', changePct: 0.6 },
           { name: 'S&P-500-Future', changePct: 0.2 },
-          { name: 'MSCI EM', changePct: -0.4 },
+          { name: 'Brent', changePct: 1.2, price: '82,40 $' },
+          { name: 'WTI', changePct: 1.1, price: '78,15 $' },
         ]),
         groups: ok([
           { name: 'Welt breit', sharePct: 38, changePct: 0.3 },

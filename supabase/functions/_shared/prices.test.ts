@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dailyCloses, eodhdFrom, eodhdSymbolOf, parseEodhdSearch, pickEodhdListing, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickFigiListing, pickListing, toEodhdSymbol } from './prices.ts';
+import { ALL_INDEX_SYMBOLS } from '../../../src/lib/indices';
+import { addDays, INDEX_SYMBOLS, symbolOpen, dailyCloses, eodhdFrom, eodhdSymbolOf, parseEodhdSearch, pickEodhdListing, localDay, openSessions, parseChart, parseEodhd, parseSearch, pickFigiListing, pickListing, toEodhdSymbol } from './prices.ts';
 
 // Invented example data; no real positions.
 const chart = (extra: object = {}) => ({
@@ -183,5 +184,22 @@ describe('WKN lookup via OpenFIGI', () => {
     expect(pickFigiListing(resp([{ ticker: 'a b', exchCode: 'GY' }]))).toBeNull();
     expect(pickFigiListing([{ warning: 'No identifier found.' }])).toBeNull();
     expect(pickFigiListing({ error: 'x' })).toBeNull();
+  });
+});
+
+describe('INDEX_SYMBOLS', () => {
+  it('matches the symbols the app reads and has no duplicates', () => {
+    const symbols = INDEX_SYMBOLS.map((i) => i.symbol as string);
+    expect(new Set(symbols).size).toBe(symbols.length);
+    expect([...symbols].sort()).toEqual([...ALL_INDEX_SYMBOLS].sort());
+  });
+
+  it('records oil and FTSE during both windows, US indices only while the US is open', () => {
+    const session = (symbol: string) => INDEX_SYMBOLS.find((i) => i.symbol === symbol)!.session;
+    expect(symbolOpen(session('BZ=F'), { xetra: true, us: false })).toBe(true);
+    expect(symbolOpen(session('CL=F'), { xetra: false, us: true })).toBe(true);
+    expect(symbolOpen(session('CL=F'), { xetra: false, us: false })).toBe(false);
+    expect(symbolOpen(session('^DJI'), { xetra: true, us: false })).toBe(false);
+    expect(symbolOpen(session('^MDAXI'), { xetra: false, us: true })).toBe(false);
   });
 });

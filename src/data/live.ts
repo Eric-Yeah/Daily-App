@@ -208,7 +208,7 @@ export async function loadLiveBlog(now: Date): Promise<Block<LiveBlogEntry[]>> {
     .limit(60);
   if (error) return failed('Live-Blog gerade nicht verfügbar.');
   const rows = (data ?? []) as { id: number; created_at: string; headline: string; body: string; importance: number; sources: LiveBlogEntry['sources'] }[];
-  if (!rows.length) return empty('Noch keine Einträge. Der Live-Blog meldet sich, sobald es zwischen 12 und 22 Uhr wichtige neue Meldungen gibt.');
+  if (!rows.length) return empty('Noch keine Einträge. Der Live-Blog meldet sich, sobald es ab 10:30 Uhr wichtige neue Meldungen gibt.');
   return ok(rows.map((r) => ({ id: r.id, createdAt: new Date(r.created_at), headline: r.headline, body: r.body, importance: r.importance, sources: Array.isArray(r.sources) ? r.sources : [] })));
 }
 

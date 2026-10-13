@@ -11,6 +11,11 @@ export interface LiveEntry {
   itemIds: number[];
 }
 
+/** The live blog is written from 10:30 until 22:59 Berlin time (hour and minute of the Berlin wall clock). */
+export const LIVE_FROM_MINUTE = 10 * 60 + 30;
+export const LIVE_UNTIL_MINUTE = 23 * 60 - 1;
+export const liveBlogActive = (hour: number, minute: number): boolean => hour * 60 + minute >= LIVE_FROM_MINUTE && hour * 60 + minute <= LIVE_UNTIL_MINUTE;
+
 /**
  * News to offer the AI for a live-blog entry: not covered yet and not already rated unimportant (1 or 2).
  * Items without a rating yet are offered too; the AI judges them from title and teaser.

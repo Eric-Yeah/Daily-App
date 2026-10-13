@@ -20,18 +20,38 @@ export interface DailyClose {
 }
 
 /**
- * Public index and future symbols (market data, not personal). `name` is what the app shows.
- * `session` says in which window they are fetched; futures trade almost around the clock and are recorded
- * during the Xetra window so the afternoon "US-Start" can show their move before the US open.
+ * Public index, future and commodity symbols (market data, not personal). `name` is what the app shows.
+ * `session` says in which window they are fetched:
+ *   xetra  9:00 until Xetra's close (European and Asian indices, equity futures; Asia has closed by then, the
+ *          session's last values are recorded)
+ *   us     15:30 until 22:05 (US indices)
+ *   both   whole day 9:00 to 22:05, daily close after 22:00 (oil futures settle at 20:30 Berlin time, FTSE closes
+ *          at 18:30), so a provisional close at Xetra's end would be wrong for them
+ * Futures trade almost around the clock and are recorded during the Xetra window so the afternoon
+ * "US-Start" can show their move before the US open.
  */
 export const INDEX_SYMBOLS = [
   { symbol: '^GDAXI', name: 'DAX', session: 'xetra' },
+  { symbol: '^MDAXI', name: 'MDAX', session: 'xetra' },
+  { symbol: '^TECDAX', name: 'TecDAX', session: 'xetra' },
   { symbol: '^STOXX50E', name: 'Euro Stoxx 50', session: 'xetra' },
+  { symbol: '^FCHI', name: 'CAC 40', session: 'xetra' },
+  { symbol: '^FTSE', name: 'FTSE 100', session: 'both' },
+  { symbol: '^N225', name: 'Nikkei 225', session: 'xetra' },
+  { symbol: '^HSI', name: 'Hang Seng', session: 'xetra' },
   { symbol: '^GSPC', name: 'S&P 500', session: 'us' },
   { symbol: '^NDX', name: 'Nasdaq 100', session: 'us' },
+  { symbol: '^DJI', name: 'Dow Jones', session: 'us' },
   { symbol: 'ES=F', name: 'S&P-500-Future', session: 'xetra' },
   { symbol: 'NQ=F', name: 'Nasdaq-100-Future', session: 'xetra' },
+  { symbol: 'BZ=F', name: 'Brent', session: 'both' },
+  { symbol: 'CL=F', name: 'WTI', session: 'both' },
 ] as const;
+
+/** Whether a symbol is fetched while the given sessions are open. */
+export function symbolOpen(session: (typeof INDEX_SYMBOLS)[number]['session'], open: { xetra: boolean; us: boolean }): boolean {
+  return session === 'xetra' ? open.xetra : session === 'us' ? open.us : open.xetra || open.us;
+}
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 

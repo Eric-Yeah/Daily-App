@@ -76,6 +76,7 @@ export function IndexStrip({ items }: { items: IndexQuote[] }) {
         <span class={`index-tile__change ${trendClass(i.changePct)}`}>
           <Pct value={i.changePct} />
         </span>
+        {i.price && <span class="index-tile__price">{i.price}</span>}
       </li>
     ));
 

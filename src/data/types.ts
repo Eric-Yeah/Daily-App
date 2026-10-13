@@ -13,6 +13,7 @@ export const failed = <T>(message: string): Block<T> => ({ status: 'error', mess
 export interface IndexQuote {
   name: string;
   changePct: number | null; // null = no quote; shown as "—"
+  price?: string; // formatted price, only for commodities (oil), e.g. "82,41 $"; index levels are not shown
 }
 
 export interface GroupMove {

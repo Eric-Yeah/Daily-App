@@ -38,8 +38,12 @@ function intro(greeting: string, what: string, c: ScriptContext): Segment[] {
   return seg('Einstieg', who, `Hier ist dein ${what} für ${formatDateLong(c.now, c.timeZone)}.`);
 }
 
+const MAX_SPOKEN_INDICES = 5; // the strip is long; read the first few indices, but always the oil prices
+
 function indexLine(indices: IndexQuote[] | null): Segment[] {
-  const list = (indices ?? []).filter((i) => i.changePct !== null).map((i) => `${i.name} ${spokenPct(i.changePct as number, 1)}`);
+  const quoted = (indices ?? []).filter((i) => i.changePct !== null);
+  const picked = [...quoted.filter((i) => !i.price).slice(0, MAX_SPOKEN_INDICES), ...quoted.filter((i) => i.price)];
+  const list = picked.map((i) => `${i.name} ${spokenPct(i.changePct as number, 1)}`);
   return list.length ? seg('Indizes', 'Die Märkte im Überblick:', `${list.join(', ')}.`) : [];
 }
 

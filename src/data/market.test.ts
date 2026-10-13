@@ -35,11 +35,14 @@ function seed() {
       { symbol: 'AAA.DE', day: '2026-10-08', close: 98 },
       { symbol: 'AAA.DE', day: '2026-10-09', close: 100 },
       { symbol: '^GSPC', day: '2026-10-09', close: 5000 },
+      { symbol: 'BZ=F', day: '2026-10-08', close: 80 },
+      { symbol: 'BZ=F', day: '2026-10-09', close: 81 },
     ],
     price_snapshots: [
       { symbol: 'AAA.DE', ts: at('2026-10-12', '09:00'), price: 101 },
       { symbol: 'AAA.DE', ts: at('2026-10-12', '09:15'), price: 102 },
       { symbol: '^GSPC', ts: at('2026-10-12', '15:30'), price: 5050 },
+      { symbol: 'BZ=F', ts: at('2026-10-12', '09:00'), price: 82.62 },
     ],
     news_links: [],
   };
@@ -87,6 +90,27 @@ describe('marketMorning', () => {
     const sp = r.indices.data.find((i) => i.name === 'S&P 500');
     expect(sp?.changePct).toBeCloseTo(1);
     expect(r.indices.data.find((i) => i.name === 'DAX')?.changePct).toBeNull();
+  });
+
+  it('adds the oil price to the tile, but no price to indices', async () => {
+    const r = await marketMorning(now);
+    if (r.indices?.status !== 'ok') throw new Error('expected ok');
+    const brent = r.indices.data.find((i) => i.name === 'Brent');
+    expect(brent?.changePct).toBeCloseTo(2);
+    expect(brent?.price).toBe('82,62 $');
+    expect(r.indices.data.find((i) => i.name === 'WTI')?.price).toBeUndefined();
+    expect(r.indices.data.find((i) => i.name === 'S&P 500')?.price).toBeUndefined();
+  });
+});
+
+describe('marketAfternoon strip', () => {
+  it('shows more indices and the oil prices, missing quotes as missing', async () => {
+    const r = await marketAfternoon(now);
+    if (r.indices?.status !== 'ok') throw new Error('expected ok');
+    const names = r.indices.data.map((i) => i.name);
+    expect(names).toEqual(expect.arrayContaining(['DAX', 'MDAX', 'TecDAX', 'Euro Stoxx 50', 'CAC 40', 'FTSE 100', 'Nikkei 225', 'Hang Seng', 'Brent', 'WTI']));
+    expect(r.indices.data.find((i) => i.name === 'Brent')?.price).toBe('82,62 $');
+    expect(r.indices.data.find((i) => i.name === 'MDAX')?.changePct).toBeNull();
   });
 });
 

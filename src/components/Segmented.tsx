@@ -15,7 +15,7 @@ const VIEWS: { key: ViewKey; label: string; icon: JSX.Element }[] = [
   },
   {
     key: 'afternoon',
-    label: 'Nachmittag',
+    label: 'Mittag/Nachmittag',
     icon: (
       <svg {...ICON}>
         <circle cx="12" cy="12" r="4" />

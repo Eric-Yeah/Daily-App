@@ -3,7 +3,7 @@
 // title, teaser, link, source and time, links them to the positions by topic and summarises new ones
 // with Claude Haiku 5.5 (within the monthly budget). Depot-related and official items are summarised
 // first; general market news gets only a few summaries per run so the budget lasts.
-// Between 12:00 and 22:00 (Berlin) it also writes the afternoon live blog from new, important items.
+// From 10:30 until 23:00 (Berlin) it also writes the live blog from new, important items.
 //
 // Called by pg_cron every 30 minutes with the secret header x-daily-cron (see migration 0005).
 // Deploy: npx supabase functions deploy daily-news --no-verify-jwt --use-api --project-ref <ref>
@@ -11,7 +11,7 @@ import { admin, isCron, json, CORS, ownerId, ownerSettings } from '../_shared/ad
 import { askJson, RULES } from '../_shared/ai.ts';
 import type { NewsInput } from '../_shared/briefing.ts';
 import { isoDay, parts } from '../_shared/berlin.ts';
-import { LIVE_SCHEMA, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
+import { LIVE_SCHEMA, liveBlogActive, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
 import { isNoise } from '../_shared/newsNoise.ts';
 import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 import { indexMoves } from '../_shared/wrap.ts';
@@ -335,9 +335,9 @@ ${RULES}`,
     }
   }
 
-  // 5. Live blog (afternoon and evening, Berlin time)
+  // 5. Live blog (from 10:30, Berlin time)
   let live = 'off';
-  if (body.force || (hour >= 12 && hour <= 22)) live = await liveBlog(db, now, settings.aiBudgetUsdMonth, body.force && body.liveHours ? Math.min(72, body.liveHours) : 0);
+  if (body.force || liveBlogActive(hour, parts(now).minute)) live = await liveBlog(db, now, settings.aiBudgetUsdMonth, body.force && body.liveHours ? Math.min(72, body.liveHours) : 0);
 
   // 6. Keep the tables small: news 14 days, live blog 30 days
   await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());

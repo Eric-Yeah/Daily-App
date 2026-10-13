@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { getSettings } from '../lib/settings';
 import { storage } from '../lib/storage';
-import { ALL_INDEX_SYMBOLS, IDX } from '../lib/indices';
+import { AFTERNOON_STRIP, ALL_INDEX_SYMBOLS, IDX, MORNING_STRIP } from '../lib/indices';
+import { formatNumber } from '../lib/format';
 import { computeDepot, periodChanges, type DepotResult, type PositionInput } from '../lib/portfolio';
 import { daily } from '../lib/supabase';
 import {
@@ -173,12 +174,14 @@ function compute(b: Bundle, now: Date): Computed {
 
 const groupMoves = (r: DepotResult): GroupMove[] => r.groups.map((g) => ({ name: g.name, sharePct: g.sharePct, changePct: g.changePct }));
 
-function quote(c: Computed, ix: { symbol: string; name: string }): IndexQuote {
+function quote(c: Computed, ix: { symbol: string; name: string; unit?: string }): IndexQuote {
   const p = c.infos.get(ix.symbol)?.price;
-  return { name: ix.name, changePct: p ? ((p.last - p.prevClose) / p.prevClose) * 100 : null };
+  const out: IndexQuote = { name: ix.name, changePct: p ? ((p.last - p.prevClose) / p.prevClose) * 100 : null };
+  if (p && ix.unit) out.price = `${formatNumber(p.last, 2)} ${ix.unit}`;
+  return out;
 }
 
-function indices(c: Computed, list: { symbol: string; name: string }[]): Block<IndexQuote[]> {
+function indices(c: Computed, list: readonly { symbol: string; name: string; unit?: string }[]): Block<IndexQuote[]> {
   const quotes = list.map((ix) => quote(c, ix));
   return quotes.some((q) => q.changePct !== null) ? ok(quotes) : empty('Indexkurse sind noch nicht verfügbar.');
 }
@@ -221,7 +224,7 @@ export async function marketMorning(now: Date): Promise<Partial<MorningData>> {
   const noWeather: Pick<MorningData, 'weather'> = { weather: empty('Das Wetter folgt in einer späteren Version.') };
   if (b === 'error') return { ...noWeather, ...allFailed<MorningData>(['indices', 'depot', 'kpis', 'alert']) };
   const c = compute(b, now);
-  const idx = indices(c, [IDX.dax, IDX.sp500, IDX.ndx, IDX.stoxx]);
+  const idx = indices(c, MORNING_STRIP);
 
   if (!c.lastDay || c.result.value === 0) {
     const none = <T>() => empty<T>(NO_PRICES);
@@ -260,7 +263,7 @@ export async function marketAfternoon(now: Date): Promise<Partial<AfternoonData>
     { ...quote(c, IDX.ndxFuture), name: 'Nasdaq 100' },
   ];
   const usStart: AfternoonData['usStart'] = futures.some((f) => f.changePct !== null) ? ok({ futures }) : empty('Future-Kurse sind noch nicht verfügbar.');
-  const idx = indices(c, [IDX.dax, IDX.stoxx, IDX.spFuture]);
+  const idx = indices(c, AFTERNOON_STRIP);
 
   const cur = depotIntraday(held(b), b.snaps, b.closes, { tz: timeZone, now, start: '09:00', end: tradingEnd });
   const last = cur?.points.at(-1);

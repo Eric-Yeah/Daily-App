@@ -3,7 +3,7 @@ import { daysBetween, hhmm, parts } from './berlin.ts';
 import { headlineDrivers, importantItems, inDays, rankNews, type NewsInput } from './briefing.ts';
 import { gdeltQuery, matchTopics, topicIndex, topTopics } from './newsTopics.ts';
 import { canonicalUrl, parseFeed, parseGdelt, plainText } from './rss.ts';
-import { liveCandidates, parseLive } from './liveblog.ts';
+import { liveBlogActive, liveCandidates, parseLive } from './liveblog.ts';
 import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseConclusion, parseDetail } from './article.ts';
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 import { isNoise } from './newsNoise.ts';
@@ -447,5 +447,16 @@ describe('topic suggestions', () => {
     expect(parseTopics(data, 3)).toEqual([['Welt'], ['USA', 'Nasdaq 100', 'script'], []]);
     expect(parseTopics(null, 2)).toEqual([[], []]);
     expect(parseTopics({ items: [{ index: 0, topics: Array.from({ length: 12 }, (_, i) => `Thema ${i}`) }] }, 1)[0]).toHaveLength(MAX_TOPICS);
+  });
+});
+
+describe('liveBlogActive', () => {
+  it('starts at 10:30 and ends before 23:00', () => {
+    expect(liveBlogActive(10, 2)).toBe(false);
+    expect(liveBlogActive(10, 29)).toBe(false);
+    expect(liveBlogActive(10, 30)).toBe(true);
+    expect(liveBlogActive(12, 0)).toBe(true);
+    expect(liveBlogActive(22, 59)).toBe(true);
+    expect(liveBlogActive(23, 0)).toBe(false);
   });
 });

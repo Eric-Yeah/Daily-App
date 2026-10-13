@@ -30,6 +30,7 @@ import {
   parseSearch,
   pickListing,
   searchUrl,
+  symbolOpen,
   type DailyClose,
 } from '../_shared/prices.ts';
 
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
     if (pos.provider_symbol && eod) eodhdOf.set(pos.provider_symbol, { eod, isin: pos.isin });
   }
   const depotSymbols = [...new Set(((positions ?? []) as { provider_symbol: string | null }[]).map((x) => x.provider_symbol).filter((s): s is string => !!s))];
-  const indexSymbols = INDEX_SYMBOLS.filter((i) => (i.session === 'xetra' ? open.xetra : open.us)).map((i) => i.symbol as string);
+  const indexSymbols = INDEX_SYMBOLS.filter((i) => symbolOpen(i.session, open)).map((i) => i.symbol as string);
 
   // 2. Intraday snapshots
   const intraday = [...new Set([...(open.xetra ? depotSymbols : []), ...indexSymbols])];
@@ -222,7 +223,7 @@ Deno.serve(async (req) => {
 
   const allSymbols = [...depotSymbols, ...INDEX_SYMBOLS.map((i) => i.symbol as string)];
   const wanted = allSymbols.filter((s) => {
-    const isUs = INDEX_SYMBOLS.some((i) => i.symbol === s && i.session === 'us');
+    const isUs = INDEX_SYMBOLS.some((i) => i.symbol === s && i.session !== 'xetra');
     if (!known.has(s)) return true; // bootstrap (EODHD failed or does not cover it)
     return isUs ? usDaily : xetraDaily;
   });
@@ -236,7 +237,7 @@ Deno.serve(async (req) => {
       errors.push('daily:fetch');
       continue;
     }
-    const isUs = INDEX_SYMBOLS.some((i) => i.symbol === symbol && i.session === 'us');
+    const isUs = INDEX_SYMBOLS.some((i) => i.symbol === symbol && i.session !== 'xetra');
     const sessionOver = isUs ? minute >= 22 * 60 : minute >= tradingEnd;
     const own = covered.has(symbol);
     const rows = dailyCloses(chart, today, weekday && sessionOver)

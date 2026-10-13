@@ -92,6 +92,10 @@
   flex-direction: column;
   gap: 8px;
 }
+/* The middle label ("Mittag/Nachmittag") is the longest, so it gets more room. */
+.segmented--views {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+}
 .segmented--views button {
   position: relative;
   height: 58px;
@@ -215,6 +219,11 @@
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 600;
+}
+.index-tile__price {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* ---------- Cards ---------- */

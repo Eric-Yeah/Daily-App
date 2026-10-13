@@ -40,7 +40,21 @@ import {
 } from '../_shared/wrap.ts';
 
 const KINDS: BriefingKind[] = ['morning', 'afternoon', 'evening'];
-const INDEX_NAMES: Record<string, string> = { '^GDAXI': 'DAX', '^STOXX50E': 'Euro Stoxx 50', '^GSPC': 'S&P 500', '^NDX': 'Nasdaq 100' };
+const INDEX_NAMES: Record<string, string> = {
+  '^GDAXI': 'DAX',
+  '^MDAXI': 'MDAX',
+  '^TECDAX': 'TecDAX',
+  '^STOXX50E': 'Euro Stoxx 50',
+  '^FCHI': 'CAC 40',
+  '^FTSE': 'FTSE 100',
+  '^N225': 'Nikkei 225',
+  '^HSI': 'Hang Seng',
+  '^GSPC': 'S&P 500',
+  '^NDX': 'Nasdaq 100',
+  '^DJI': 'Dow Jones',
+  'BZ=F': 'Brent (Ölpreis, US-Dollar je Barrel)',
+  'CL=F': 'WTI (Ölpreis, US-Dollar je Barrel)',
+};
 // The paid web search in the morning overview is switched off: in a test it found little the news feeds did not already
 // have (Reuters, AP and others block the search crawler). Set to true to use it again (about 0.30 USD a month).
 const WEB_SEARCH_ENABLED = false;

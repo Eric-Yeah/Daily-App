@@ -328,7 +328,7 @@ function SpeechSection() {
 
 const PUSH_TIMES: { key: 'pushMorning' | 'pushAfternoon' | 'pushEvening'; label: string; options: string[] }[] = [
   { key: 'pushMorning', label: 'Morgenbriefing', options: ['06:00', '06:30', '07:00', '07:30', '08:00'] },
-  { key: 'pushAfternoon', label: 'Nachmittag', options: ['12:00', '13:00', '14:00', '15:00', '16:00'] },
+  { key: 'pushAfternoon', label: 'Mittag/Nachmittag', options: ['12:00', '13:00', '14:00', '15:00', '16:00'] },
   { key: 'pushEvening', label: 'Abendbriefing', options: ['17:35', '17:45', '18:00', '18:30', '19:00', '20:00'] },
 ];
 
