@@ -9,6 +9,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.16.1',
+    date: '2026-10-13',
+    title: 'Mittag/Nachmittag ab 10:30',
+    notes: [
+      'Die Ansicht „Heute“ springt jetzt schon um 10:30 Uhr auf „Mittag/Nachmittag“ (vorher 12 Uhr), passend zum Start des Live-Blogs. Davor zeigt sie wie bisher den Morgen.',
+    ],
+  },
+  {
     version: '0.16.0',
     date: '2026-10-13',
     title: 'Mehr Indizes, Ölpreise und früherer Live-Blog',
@@ -16,7 +24,7 @@ export const RELEASES: Release[] = [
       'Die laufende Leiste mit den Kursen zeigt jetzt mehr Indizes: MDAX, TecDAX, Dow Jones, FTSE 100, CAC 40, Nikkei 225 und Hang Seng, dazu die Ölpreise Brent und WTI. Beim Öl steht unter der Veränderung auch der Preis in Dollar.',
       'Am Nachmittag (Mittag) läuft die Leiste mit den europäischen und asiatischen Indizes, den US-Futures und dem Öl. Am Morgen kommen die US-Schlusskurse dazu.',
       'Der Marktüberblick kennt die neuen Indizes und die Ölpreise jetzt auch. Beim Vorlesen nennt Daily die ersten Indizes und immer die Ölpreise.',
-      'Der Tab „Nachmittag“ heißt jetzt „Mittag/Nachmittag“. Der Live-Blog startet jetzt schon um 10:30 Uhr (vorher 12 Uhr) und läuft bis 23 Uhr. Du findest ihn im Tab „Mittag/Nachmittag“; die Ansicht springt weiterhin um 12 Uhr automatisch dorthin.',
+      'Der Tab „Nachmittag“ heißt jetzt „Mittag/Nachmittag“. Der Live-Blog startet jetzt schon um 10:30 Uhr (vorher 12 Uhr) und läuft bis 23 Uhr. Du findest ihn im Tab „Mittag/Nachmittag“.',
       'Neue Kurse erscheinen erst, wenn der Kursabruf sie das erste Mal geholt hat (zu Handelszeiten alle 30 Minuten). Bis dahin zeigt die Leiste „—“ statt einer Zahl.',
     ],
   },

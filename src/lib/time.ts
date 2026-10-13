@@ -93,10 +93,12 @@ export function isTradingDay(p: ZonedParts, holidays: readonly string[] = XETRA_
   return p.weekday <= 5 && !holidays.includes(isoDate(p));
 }
 
-/** Before 12:00 → morning, 12:00 until trading end → afternoon, afterwards evening. */
+/** Before 10:30 → morning, 10:30 until trading end → afternoon (Mittag/Nachmittag, when the live blog starts), afterwards evening. */
+export const AFTERNOON_FROM = '10:30';
+
 export function pickView(date: Date, opts: Pick<MarketOptions, 'timeZone' | 'tradingEnd'>): ViewKey {
   const m = minutesOfDay(zonedParts(date, opts.timeZone));
-  if (m < 12 * 60) return 'morning';
+  if (m < parseHHMM(AFTERNOON_FROM)) return 'morning';
   if (m < parseHHMM(opts.tradingEnd)) return 'afternoon';
   return 'evening';
 }

@@ -22,7 +22,7 @@ export function Today() {
   const now = useNow();
   const [view, setView] = useState<ViewKey>(() => manualView ?? pickView(now, settings));
 
-  // Follow the clock (e.g. morning → afternoon at 12:00) unless the user picked a view.
+  // Follow the clock (e.g. morning → afternoon at 10:30) unless the user picked a view.
   useEffect(() => {
     if (!manualView) setView(pickView(now, settings));
   }, [now, settings.timeZone, settings.tradingEnd]);

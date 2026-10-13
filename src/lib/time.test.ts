@@ -18,7 +18,8 @@ const berlin = (iso: string) => new Date(`${iso}+02:00`);
 describe('pickView', () => {
   it('picks the view by Berlin time', () => {
     expect(pickView(berlin('2026-10-12T07:00'), opts)).toBe('morning');
-    expect(pickView(berlin('2026-10-12T11:59'), opts)).toBe('morning');
+    expect(pickView(berlin('2026-10-12T10:29'), opts)).toBe('morning');
+    expect(pickView(berlin('2026-10-12T10:30'), opts)).toBe('afternoon');
     expect(pickView(berlin('2026-10-12T12:00'), opts)).toBe('afternoon');
     expect(pickView(berlin('2026-10-12T17:29'), opts)).toBe('afternoon');
     expect(pickView(berlin('2026-10-12T17:30'), opts)).toBe('evening');
