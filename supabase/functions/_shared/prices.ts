@@ -236,7 +236,7 @@ export function parseEodhd(raw: unknown): DailyClose[] {
 /** Which sessions are open at a Berlin wall-clock time (minutes since midnight, weekday 1–7). */
 export function openSessions(weekday: number, minute: number, tradingEndMinute: number): { xetra: boolean; us: boolean } {
   if (weekday > 5) return { xetra: false, us: false };
-  // The jobs run at :02 and :32; a small buffer after the close captures the closing auction.
+  // The jobs run at :00 and :30; a small buffer after the close captures the closing auction.
   return {
     xetra: minute >= 9 * 60 && minute <= tradingEndMinute + 5,
     us: minute >= 15 * 60 + 30 && minute <= 22 * 60 + 5,

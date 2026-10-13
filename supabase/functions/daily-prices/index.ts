@@ -169,8 +169,12 @@ Deno.serve(async (req) => {
   //    symbols EODHD does not cover come from Yahoo alone.
   const known = new Map<string, number>();
   {
-    const { data } = await db.from('price_daily').select('symbol').limit(10000);
-    for (const r of (data ?? []) as { symbol: string }[]) known.set(r.symbol, (known.get(r.symbol) ?? 0) + 1);
+    // The API returns at most 1000 rows per request, so page through the table (stable order) to see every symbol.
+    for (let from = 0; from < 20000; from += 1000) {
+      const { data } = await db.from('price_daily').select('symbol').order('symbol').order('day').range(from, from + 999);
+      for (const r of (data ?? []) as { symbol: string }[]) known.set(r.symbol, (known.get(r.symbol) ?? 0) + 1);
+      if ((data ?? []).length < 1000) break;
+    }
   }
   const recent = new Map<string, { day: string; source: string }[]>();
   {
