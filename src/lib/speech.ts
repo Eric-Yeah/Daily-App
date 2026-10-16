@@ -331,8 +331,14 @@ async function playChunk(gen: number): Promise<void> {
     return;
   }
   const el = audioPlayer();
+  let startedAt = 0;
   el.onended = () => {
     if (gen !== generation) return;
+    // Over before it began (nothing was played): say so instead of closing the player silently.
+    if (Date.now() - startedAt < 400) {
+      finish(`${GENERIC_ERROR} (Audio endete sofort)`);
+      return;
+    }
     pos++;
     void playChunk(gen);
   };
@@ -340,6 +346,7 @@ async function playChunk(gen: number): Promise<void> {
   el.src = result.url;
   loadedPos = pos;
   try {
+    startedAt = Date.now();
     await el.play();
   } catch (e) {
     if (gen === generation) finish(`${GENERIC_ERROR} (Wiedergabe: ${e instanceof DOMException ? e.name : 'unbekannt'})`);
@@ -391,6 +398,12 @@ export function startSpeech(id: string, title: string, script: Segment[]): void 
   if (!chunks.length) {
     finish('Es gibt noch nichts zum Vorlesen.');
     return;
+  }
+  // iOS 17+: play like a music app, i.e. also with the silent switch on.
+  try {
+    (navigator as Navigator & { audioSession?: { type: string } }).audioSession!.type = 'playback';
+  } catch {
+    // older systems: the silent switch may mute the player
   }
   const el = audioPlayer();
   el.src = silence();

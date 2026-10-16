@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.3',
+    date: '2026-10-16',
+    title: 'Vorlesen auch mit Stummschalter',
+    notes: ['Daily spielt die Sprache jetzt wie eine Musik-App ab, auch wenn der Stummschalter am iPhone an ist. Endet die Wiedergabe sofort, steht jetzt eine Meldung da, statt dass der Player kommentarlos verschwindet.'],
+  },
+  {
     version: '0.17.2',
     date: '2026-10-16',
     title: 'Vorlesen: Wiedergabe repariert',
