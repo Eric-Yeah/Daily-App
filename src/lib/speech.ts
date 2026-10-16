@@ -183,9 +183,9 @@ function fetchAudio(text: string, voice: string, rate: number): Promise<FetchRes
     p = (async (): Promise<FetchResult> => {
       try {
         const { data, error } = await supabase().functions.invoke('daily-speech', { body: { text, voice, rate } });
-        return error ? { ok: false, error: GENERIC_ERROR } : readSpeechAnswer(data);
-      } catch {
-        return { ok: false, error: GENERIC_ERROR };
+        return error ? { ok: false, error: `${GENERIC_ERROR} (Abruf: ${error.message})` } : readSpeechAnswer(data);
+      } catch (e) {
+        return { ok: false, error: `${GENERIC_ERROR} (Abruf: ${e instanceof Error ? e.message : 'unbekannt'})` };
       }
     })();
     audioCache.set(k, p);
@@ -322,13 +322,13 @@ async function playChunk(gen: number): Promise<void> {
     pos++;
     void playChunk(gen);
   };
-  el.onerror = () => gen === generation && finish(GENERIC_ERROR);
+  el.onerror = () => gen === generation && finish(`${GENERIC_ERROR} (Audio: Fehler ${el.error?.code ?? '?'})`);
   el.src = result.url;
   loadedPos = pos;
   try {
     await el.play();
-  } catch {
-    if (gen === generation) finish(GENERIC_ERROR);
+  } catch (e) {
+    if (gen === generation) finish(`${GENERIC_ERROR} (Wiedergabe: ${e instanceof DOMException ? e.name : 'unbekannt'})`);
     return;
   }
   if (gen !== generation) return;

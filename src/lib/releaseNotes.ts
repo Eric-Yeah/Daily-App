@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.1',
+    date: '2026-10-16',
+    title: 'Vorlesen: genauere Fehlermeldung',
+    notes: ['Wenn das Vorlesen scheitert, steht jetzt in Klammern dabei, an welchem Schritt es hakt (Abruf oder Wiedergabe). Das hilft, den Fehler zu finden.'],
+  },
+  {
     version: '0.17.0',
     date: '2026-10-16',
     title: 'Vorlesen mit Google-Stimme',
