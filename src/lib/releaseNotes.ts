@@ -9,6 +9,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.0',
+    date: '2026-10-16',
+    title: 'Vorlesen mit Google-Stimme',
+    notes: [
+      'Das Vorlesen ist zurück, jetzt mit Stimmen von Google Cloud. Die Taste „Briefing anhören“ steht wieder unter „Heute“, der Player bleibt beim Wechsel der Tabs sichtbar.',
+      'Unter Mehr → Vorlesen wählst du die Stimme (Frau oder Mann, klar oder natürlich) und das Tempo, mit „Probe anhören“ kannst du sie testen.',
+      'Übertragen wird nur der Text des Briefings, sonst nichts. Du brauchst dafür Internet. Pro Monat sind höchstens 800.000 Zeichen möglich, das liegt unter dem kostenlosen Kontingent von Google.',
+      'Die Wiedergabe läuft als normales Audio: Auf dem Sperrbildschirm und mit Kopfhörern kannst du pausieren und weiterspringen.',
+    ],
+  },
+  {
     version: '0.16.3',
     date: '2026-10-13',
     title: 'Mehr aufgeräumt',

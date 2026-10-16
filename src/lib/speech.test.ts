@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkText, cleanForSpeech, scriptChunks, speakingMinutes } from './speech';
+import { chunkText, cleanForSpeech, readSpeechAnswer, scriptChunks, speakingMinutes } from './speech';
 
 describe('cleanForSpeech', () => {
   it('turns symbols into words', () => {
@@ -64,5 +64,17 @@ describe('speakingMinutes', () => {
     expect(speakingMinutes([{ label: 'A', text: 'Kurz.' }])).toBe(1);
     expect(speakingMinutes([{ label: 'A', text: words(600) }], 1)).toBe(4);
     expect(speakingMinutes([{ label: 'A', text: words(600) }], 1.5)).toBe(3);
+  });
+});
+
+describe('readSpeechAnswer', () => {
+  it('turns an error status into a German message', () => {
+    expect(readSpeechAnswer({ status: 'budget' })).toEqual({ ok: false, error: 'Das Limit für das Vorlesen in diesem Monat ist erreicht.' });
+    expect(readSpeechAnswer({ status: 'no_key' })).toEqual({ ok: false, error: 'Die Stimme ist noch nicht eingerichtet.' });
+    expect(readSpeechAnswer({ status: 'error' })).toEqual({ ok: false, error: 'Vorlesen ist gerade nicht möglich.' });
+    expect(readSpeechAnswer(null)).toEqual({ ok: false, error: 'Vorlesen ist gerade nicht möglich.' });
+  });
+  it('treats an ok answer without audio as an error', () => {
+    expect(readSpeechAnswer({ status: 'ok' }).ok).toBe(false);
   });
 });

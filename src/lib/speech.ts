@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'preact/hooks';
+import { currentSession } from './auth';
 import { storage } from './storage';
+import { supabase, supabaseConfigured } from './supabase';
 
-// Read-aloud for the briefings. It uses the speech output built into the device (Web Speech API): free, no server,
-// nothing leaves the device. The text is cut into short chunks that are spoken one after the other, because long
-// utterances get cut off on some systems and because pause/skip then only need to restart a chunk.
+// Read-aloud for the briefings. The voice comes from Google Cloud Text-to-Speech via the Edge Function
+// "daily-speech" (only the text of the briefing is sent, nothing else). The text is cut into chunks; each chunk is
+// fetched as MP3 and played one after the other, the next one is fetched while the current one plays. Pause and skip
+// then only need to restart a chunk.
 
 /** One part of a script, e.g. "Marktüberblick"; the player skips from part to part. */
 export interface Segment {
@@ -96,8 +99,8 @@ export interface Chunk {
 }
 
 /** All chunks of a script in order, each knowing which segment it belongs to. Empty segments are skipped. */
-export function scriptChunks(segments: Segment[]): Chunk[] {
-  return segments.flatMap((s, segment) => chunkText(cleanForSpeech(s.text)).map((text) => ({ segment, text })));
+export function scriptChunks(segments: Segment[], maxLen = 200): Chunk[] {
+  return segments.flatMap((s, segment) => chunkText(cleanForSpeech(s.text), maxLen).map((text) => ({ segment, text })));
 }
 
 const WORDS_PER_MINUTE = 150; // German speech at normal speed
@@ -108,10 +111,19 @@ export function speakingMinutes(segments: Segment[], rate = 1): number {
   return Math.max(1, Math.round(words / (WORDS_PER_MINUTE * rate)));
 }
 
-// ---------- Preferences (this device only: voice names differ per device) ----------
+// ---------- Preferences (this device only) ----------
+
+/** Voices of the Edge Function (keep in sync with VOICES in supabase/functions/_shared/tts.ts). */
+export const VOICES = [
+  { id: 'de-DE-Neural2-F', label: 'Frau, klar' },
+  { id: 'de-DE-Neural2-B', label: 'Mann, klar' },
+  { id: 'de-DE-Chirp3-HD-Aoede', label: 'Frau, natürlich' },
+  { id: 'de-DE-Chirp3-HD-Charon', label: 'Mann, natürlich' },
+] as const;
+export const DEFAULT_VOICE: string = VOICES[0].id;
 
 export interface SpeechPrefs {
-  voiceURI: string | null;
+  voice: string;
   rate: number;
 }
 
@@ -122,50 +134,71 @@ const clampRate = (r: unknown): number => (typeof r === 'number' && r >= 0.5 && 
 
 export function getPrefs(): SpeechPrefs {
   const raw = storage.getJSON<Partial<SpeechPrefs>>(PREFS_KEY);
-  return { voiceURI: typeof raw?.voiceURI === 'string' ? raw.voiceURI : null, rate: clampRate(raw?.rate) };
+  const voice = VOICES.find((v) => v.id === raw?.voice)?.id ?? DEFAULT_VOICE;
+  return { voice, rate: clampRate(raw?.rate) };
 }
 
 export function setPrefs(patch: Partial<SpeechPrefs>): void {
   storage.setJSON(PREFS_KEY, { ...getPrefs(), ...patch });
-  // A running read picks up a new speed right away (restarting the current chunk).
+  // A running read picks up a new voice or speed right away (restarting the current chunk).
   if (state.status === 'playing') playFrom(pos);
   emit();
 }
 
-// ---------- Voices ----------
+/** Reading aloud needs a signed-in owner of a configured backend (not demo mode) and an audio player. */
+export const speechSupported = (): boolean => typeof Audio !== 'undefined' && supabaseConfigured && !!currentSession();
 
-/** Master switch: reading aloud is off until the cloud voice is set up. Set to true to bring the feature back. */
-export const SPEECH_ENABLED = false;
+// ---------- Audio from the Edge Function ----------
 
-export const speechSupported = (): boolean => SPEECH_ENABLED && typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const MAX_CHUNK = 500; // characters per request (the Edge Function accepts 700)
 
-/** German voices, the better ones (enhanced/premium) first. */
-export function germanVoices(): SpeechSynthesisVoice[] {
-  if (!speechSupported()) return [];
-  const quality = (v: SpeechSynthesisVoice) => (/premium|enhanced|erweitert|verbessert/i.test(v.name) ? 0 : v.localService ? 1 : 2);
-  return speechSynthesis
-    .getVoices()
-    .filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith('de'))
-    .sort((a, b) => quality(a) - quality(b) || a.name.localeCompare(b.name, 'de'));
+type FetchResult = { ok: true; url: string } | { ok: false; error: string };
+
+const ERRORS: Record<string, string> = {
+  budget: 'Das Limit für das Vorlesen in diesem Monat ist erreicht.',
+  no_key: 'Die Stimme ist noch nicht eingerichtet.',
+};
+const GENERIC_ERROR = 'Vorlesen ist gerade nicht möglich.';
+
+/** The Edge Function's answer as a playable Blob URL, or the German error text. */
+export function readSpeechAnswer(data: unknown): FetchResult {
+  const d = data as { status?: unknown; audio?: unknown } | null;
+  if (d?.status === 'ok' && typeof d.audio === 'string' && d.audio) {
+    const bin = atob(d.audio);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { ok: true, url: URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' })) };
+  }
+  return { ok: false, error: (typeof d?.status === 'string' && ERRORS[d.status]) || GENERIC_ERROR };
 }
 
-function chosenVoice(): SpeechSynthesisVoice | null {
-  const voices = germanVoices();
-  const { voiceURI } = getPrefs();
-  return voices.find((v) => v.voiceURI === voiceURI) ?? voices.find((v) => v.lang.replace('_', '-') === 'de-DE') ?? voices[0] ?? null;
+// Audio already fetched or being fetched, per text+voice+rate, so skipping back and the prefetch cost no characters twice.
+const audioCache = new Map<string, Promise<FetchResult>>();
+const cacheKey = (text: string, voice: string, rate: number) => `${voice}|${rate}|${text}`;
+
+function fetchAudio(text: string, voice: string, rate: number): Promise<FetchResult> {
+  const k = cacheKey(text, voice, rate);
+  let p = audioCache.get(k);
+  if (!p) {
+    p = (async (): Promise<FetchResult> => {
+      try {
+        const { data, error } = await supabase().functions.invoke('daily-speech', { body: { text, voice, rate } });
+        return error ? { ok: false, error: GENERIC_ERROR } : readSpeechAnswer(data);
+      } catch {
+        return { ok: false, error: GENERIC_ERROR };
+      }
+    })();
+    audioCache.set(k, p);
+    void p.then((r) => {
+      if (!r.ok) audioCache.delete(k); // try again next time
+    });
+  }
+  return p;
 }
 
-/** The German voices; the list loads late on some browsers, so it updates itself. */
-export function useVoices(): SpeechSynthesisVoice[] {
-  const [voices, setVoices] = useState(germanVoices);
-  useEffect(() => {
-    if (!speechSupported()) return;
-    const update = () => setVoices(germanVoices());
-    speechSynthesis.addEventListener('voiceschanged', update);
-    update();
-    return () => speechSynthesis.removeEventListener('voiceschanged', update);
-  }, []);
-  return voices;
+function clearAudioCache(): void {
+  for (const p of audioCache.values()) void p.then((r) => r.ok && URL.revokeObjectURL(r.url));
+  audioCache.clear();
 }
 
 // ---------- Player ----------
@@ -178,17 +211,23 @@ export interface SpeechState {
   segment: number;
   segmentCount: number;
   progress: number; // 0..1 over the whole script
+  loading: boolean; // waiting for the audio of the current chunk
   error: string | null;
 }
 
-const IDLE: SpeechState = { status: 'idle', id: null, title: '', label: '', segment: 0, segmentCount: 0, progress: 0, error: null };
+const IDLE: SpeechState = { status: 'idle', id: null, title: '', label: '', segment: 0, segmentCount: 0, progress: 0, loading: false, error: null };
 
 let state: SpeechState = IDLE;
 let segments: Segment[] = [];
 let chunks: Chunk[] = [];
 let pos = 0;
-let generation = 0; // bumped on every restart so events of a cancelled utterance are ignored
+let generation = 0; // bumped on every restart so answers and events of an abandoned chunk are ignored
+let player: HTMLAudioElement | null = null;
+let loadedPos = -1; // chunk currently loaded into the player (so "continue" does not fetch again)
 const listeners = new Set<() => void>();
+
+// A tiny silent WAV: playing it inside the tap unlocks the player on iOS, which only plays after a user action.
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 function emit(): void {
   listeners.forEach((l) => l());
@@ -221,7 +260,7 @@ export function useSpeech(): SpeechState {
   return value;
 }
 
-// Keep the screen on while reading: if iOS locks the screen it stops the speech.
+// Keep the screen on while reading, as a safety net: some systems stop audio when the screen locks.
 let wakeLock: WakeLockSentinel | null = null;
 async function holdScreen(on: boolean): Promise<void> {
   try {
@@ -238,79 +277,133 @@ async function holdScreen(on: boolean): Promise<void> {
   }
 }
 
-function speakChunk(gen: number): void {
+function audioPlayer(): HTMLAudioElement {
+  if (!player) {
+    player = new Audio();
+    player.preload = 'auto';
+  }
+  return player;
+}
+
+/** Lock-screen / headset controls, where the system offers them. */
+function setMediaSession(): void {
+  if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+  const ms = navigator.mediaSession;
+  ms.metadata = new MediaMetadata({ title: state.title || 'Daily', artist: 'Daily' });
+  ms.setActionHandler('play', resumeSpeech);
+  ms.setActionHandler('pause', pauseSpeech);
+  ms.setActionHandler('nexttrack', () => skipSpeech(1));
+  ms.setActionHandler('previoustrack', () => skipSpeech(-1));
+}
+
+function prefetch(gen: number, index: number): void {
+  if (gen !== generation || index >= chunks.length) return;
+  const { voice, rate } = getPrefs();
+  void fetchAudio(chunks[index].text, voice, rate);
+}
+
+async function playChunk(gen: number): Promise<void> {
   if (gen !== generation) return;
   if (pos >= chunks.length) {
     finish();
     return;
   }
-  const { rate } = getPrefs();
-  const u = new SpeechSynthesisUtterance(chunks[pos].text);
-  u.lang = 'de-DE';
-  u.rate = rate;
-  const voice = chosenVoice();
-  if (voice) u.voice = voice;
-  u.onstart = () => gen === generation && publish(position());
-  u.onend = () => {
+  const { voice, rate } = getPrefs();
+  publish({ loading: true, ...position() });
+  const result = await fetchAudio(chunks[pos].text, voice, rate);
+  if (gen !== generation) return;
+  if (!result.ok) {
+    finish(result.error);
+    return;
+  }
+  const el = audioPlayer();
+  el.onended = () => {
     if (gen !== generation) return;
     pos++;
-    speakChunk(gen);
+    void playChunk(gen);
   };
-  u.onerror = (e) => {
-    if (gen !== generation || e.error === 'interrupted' || e.error === 'canceled') return;
-    finish('Vorlesen ist gerade nicht möglich.');
-  };
-  speechSynthesis.speak(u);
+  el.onerror = () => gen === generation && finish(GENERIC_ERROR);
+  el.src = result.url;
+  loadedPos = pos;
+  try {
+    await el.play();
+  } catch {
+    if (gen === generation) finish(GENERIC_ERROR);
+    return;
+  }
+  if (gen !== generation) return;
+  publish({ loading: false, ...position() });
+  prefetch(gen, pos + 1);
 }
 
 function playFrom(from: number): void {
   generation++;
   pos = Math.max(0, Math.min(from, chunks.length));
-  speechSynthesis.cancel();
+  player?.pause();
+  loadedPos = -1;
   publish({ status: 'playing', error: null, ...position() });
   void holdScreen(true);
-  speakChunk(generation);
+  void playChunk(generation);
 }
 
 function finish(error: string | null = null): void {
   generation++;
-  speechSynthesis.cancel();
+  if (player) {
+    player.pause();
+    player.removeAttribute('src');
+    player.onended = null;
+    player.onerror = null;
+  }
+  clearAudioCache();
   chunks = [];
   segments = [];
   pos = 0;
+  loadedPos = -1;
   state = { ...IDLE, error };
   void holdScreen(false);
   emit();
 }
 
 /**
- * Starts reading. Must be called straight from a tap (iOS only speaks after a user action), so the script has to
- * be ready when it is called. Replaces whatever is being read.
+ * Starts reading. Must be called straight from a tap (iOS only plays audio after a user action), so the script has
+ * to be ready when it is called. Replaces whatever is being read.
  */
 export function startSpeech(id: string, title: string, script: Segment[]): void {
   if (!speechSupported()) return;
   generation++;
-  speechSynthesis.cancel();
+  clearAudioCache();
   segments = script;
-  chunks = scriptChunks(script);
+  chunks = scriptChunks(script, MAX_CHUNK);
   if (!chunks.length) {
     finish('Es gibt noch nichts zum Vorlesen.');
     return;
   }
+  const el = audioPlayer();
+  el.src = SILENCE;
+  void el.play().catch(() => undefined); // unlocks the player inside the tap
   state = { ...IDLE, status: 'playing', id, title, segmentCount: script.length };
+  setMediaSession();
   playFrom(0);
 }
 
 export function pauseSpeech(): void {
   if (state.status !== 'playing') return;
-  generation++;
-  speechSynthesis.cancel(); // resuming restarts the current chunk, which is more reliable than pause()/resume()
-  publish({ status: 'paused' });
+  player?.pause();
+  // A fetch still running is abandoned; continuing fetches it again (it stays in the cache).
+  if (state.loading) generation++;
+  publish({ status: 'paused', loading: false });
   void holdScreen(false);
 }
 
 export function resumeSpeech(): void {
-  if (state.status === 'paused') playFrom(pos);
+  if (state.status !== 'paused') return;
+  if (player && loadedPos === pos && player.src && !player.ended) {
+    publish({ status: 'playing' });
+    void holdScreen(true);
+    void player.play().catch(() => playFrom(pos));
+  } else {
+    playFrom(pos);
+  }
 }
 
 export function stopSpeech(): void {
@@ -338,6 +431,7 @@ export function skipSpeech(delta: 1 | -1): void {
   if (state.status === 'playing') playFrom(target);
   else {
     pos = target;
+    loadedPos = -1;
     publish(position());
   }
 }
@@ -347,11 +441,11 @@ export function speakSample(): void {
   startSpeech('sample', 'Probe', [{ label: 'Probe', text: 'Guten Morgen. So klingt dein Briefing mit dieser Stimme und diesem Tempo.' }]);
 }
 
-// Coming back to the app: if the system silenced the speech in the background, carry on where it was.
+// Coming back to the app: if the system paused the audio in the background, carry on where it was.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || state.status !== 'playing') return;
+    if (document.visibilityState !== 'visible' || state.status !== 'playing' || state.loading) return;
     void holdScreen(true);
-    if (!speechSynthesis.speaking || speechSynthesis.paused) playFrom(pos);
+    if (player?.paused) void player.play().catch(() => playFrom(pos));
   });
 }

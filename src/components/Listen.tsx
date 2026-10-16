@@ -80,7 +80,7 @@ export function SpeechBar() {
           <span>
             {sp.label}
             {sp.segmentCount > 1 ? ` · ${sp.segment + 1} von ${sp.segmentCount}` : ''}
-            {playing ? '' : ' · pausiert'}
+            {playing ? (sp.loading ? ' · lädt …' : '') : ' · pausiert'}
           </span>
         </div>
         <div class="speechbar__controls">

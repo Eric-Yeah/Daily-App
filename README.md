@@ -20,7 +20,7 @@ Deine persönliche Tages-App (PWA, iPhone zuerst, läuft auch am Mac): **Morgen*
 | M7 | Overload und Study App | **fertig** (Training ohne Plan) |
 | M8 | Feinschliff, Passkey-Login | **fertig** (Passkey einmal im Dashboard einschalten, Supabase-Beta) |
 
-**Vorlesen:** Unter „Heute“ liest die Taste „Briefing anhören“ das Morgen-, Nachmittags- oder Abendbriefing vor (Marktüberblick, Depot, Meldungen, Termine, Training). Es nutzt die Sprachausgabe des Geräts (Web Speech API), also kostenlos und ohne Server; Stimme und Tempo unter Mehr → Vorlesen. Bei gesperrtem Bildschirm kann iOS das Vorlesen anhalten, deshalb hält Daily den Bildschirm währenddessen an.
+**Vorlesen:** Unter „Heute“ liest die Taste „Briefing anhören“ das Morgen-, Nachmittags- oder Abendbriefing vor (Marktüberblick, Depot, Meldungen, Termine, Training). Die Stimme kommt von Google Cloud Text-to-Speech über die Edge Function `daily-speech` (nur der Text wird übertragen, nur für den Owner). Der API-Schlüssel liegt als Supabase-Secret `DAILY_GOOGLE_TTS_API_KEY` (in der Google-Cloud-Console auf die Cloud Text-to-Speech API eingeschränkt). Die Function zählt die Zeichen in `daily.ai_usage` (Modell `google-tts`) und stoppt bei 800.000 Zeichen im Monat, unter dem kostenlosen Kontingent von Google. Stimme und Tempo unter Mehr → Vorlesen.
 
 Beispieldaten gibt es nur noch, solange du **keine Positionen** angelegt hast. Dann steht oben „Beispieldaten · keine echten Kurse“; unter **Mehr → Beispieldaten anzeigen** schaltest du sie aus. Sobald Positionen da sind, ist alles echt: Anmeldung, Einstellungen, Aufgaben, Zeile zum Tag, Depot (Positionen, Gruppen, CSV), Kurse, Indizes und US-Markt, Meldungen mit KI-Kurzfassung, Markttermine, Briefings, Push, Training aus Overload und „Dein Tag“ aus der Study App. Das Wetter fehlt noch.
 
@@ -174,7 +174,7 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einsta
 
 **Functions neu veröffentlichen** (nach Änderungen in `supabase/functions/`):
 ```bash
-npx supabase functions deploy daily-news daily-briefing daily-news-detail daily-topics --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
+npx supabase functions deploy daily-news daily-briefing daily-news-detail daily-topics daily-speech --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
 ```
 
 **Prüfen, ob der Zeitplan läuft** (SQL Editor):
