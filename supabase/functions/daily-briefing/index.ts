@@ -158,6 +158,7 @@ Gib danach 4 bis 6 Stichpunkte auf Deutsch mit den wichtigsten Fakten wieder, je
 
   if (!long) {
     const res = await askJson<unknown>(db, budget, {
+      purpose: 'wrap-short',
       system: wrapSystem(kind, RULES),
       user: input,
       maxTokens: 2800,
@@ -168,6 +169,7 @@ Gib danach 4 bis 6 Stichpunkte auf Deutsch mit den wichtigsten Fakten wieder, je
 
   // Long overview: plan the topics, then write each topic in its own short call (in parallel).
   const planRes = await askJson<unknown>(db, budget, {
+    purpose: 'wrap-plan',
     system: planSystem(kind, RULES),
     user: input,
     maxTokens: 1500,
@@ -184,6 +186,7 @@ Gib danach 4 bis 6 Stichpunkte auf Deutsch mit den wichtigsten Fakten wieder, je
   const written = await Promise.all(
     plan.topics.map((t) =>
       askJson<{ text: string }>(db, budget, {
+        purpose: 'wrap-section',
         system: sectionSystem(RULES),
         user: sectionUser({ dayLabel, title: t.title, indices: /markt|index|börse|aktien|dax/i.test(t.title) ? indices : [], items: t.items }),
         maxTokens: 900,
@@ -257,6 +260,7 @@ async function makeOpen(db: Db, now: Date, budget: number, tz: string, debug: st
   if (pool.length) {
     const p = parts(now, tz);
     const res = await askJson<unknown>(db, budget, {
+      purpose: 'open',
       system: openSystem(RULES),
       user: openUser({ time: `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`, indices, gainers, losers, news: pool }),
       maxTokens: 1200,

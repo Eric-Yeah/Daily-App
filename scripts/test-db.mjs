@@ -327,6 +327,19 @@ await test('Server zählt KI-Kosten zusammen', () =>
   }),
 );
 
+await test('KI-Kosten werden nach Zweck getrennt (0015)', () =>
+  as('service_role', null, async () => {
+    await db.query('delete from daily.ai_usage');
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 1000, 200, 0.0002, 'live')");
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 1000, 200, 0.0002, 'live')");
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 500, 1500, 0.0008, 'live!')");
+    await db.query("select daily.ai_usage_add('claude-haiku-5-5', 1000, 200, 0.0002)");
+    const r = await db.query('select purpose, requests, cost_usd from daily.ai_usage order by purpose');
+    assert.deepEqual(r.rows.map((x) => [x.purpose, x.requests]), [['live', 2], ['live!', 1], ['unknown', 1]]);
+    await as('authenticated', OWNER, () => rejects(db.query("select daily.ai_usage_add('m', 1, 1, 1, 'x')"), /permission denied/));
+  }),
+);
+
 // --- Kurse (0006) ---
 await asCommit('service_role', null, async () => {
   await db.query("insert into daily.price_snapshots (symbol, ts, price) values ('TEST.X', '2026-10-12T08:00:00Z', 101.5)");

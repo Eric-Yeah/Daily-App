@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
 
   const settings = await ownerSettings(db, owner);
   const res = await askJson<unknown>(db, settings.aiBudgetUsdMonth, {
+    purpose: 'topics',
     system: topicsSystem(KNOWN_TOPICS),
     user: topicsUser(names),
     maxTokens: 200 + names.length * 60,

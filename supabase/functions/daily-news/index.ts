@@ -130,6 +130,7 @@ async function liveBlog(db: ReturnType<typeof admin>, now: Date, budget: number,
   if (!offered.length) return 'nothing new';
 
   const res = await askJson<unknown>(db, budget, {
+    purpose: 'live',
     system: liveSystem(RULES),
     user: liveUser({
       time: `${String(parts(now).hour).padStart(2, '0')}:${String(parts(now).minute).padStart(2, '0')}`,
@@ -269,6 +270,7 @@ Deno.serve(async (req) => {
       )
       .join('\n');
     const res = await askJson<{ items: { id: number; summary: string; importance: number; headline_only: boolean; topics?: string[] }[] }>(db, settings.aiBudgetUsdMonth, {
+      purpose: 'summary',
       system: `Du fasst Wirtschafts- und Börsenmeldungen für einen privaten Tagesüberblick zusammen.
 Für jede Meldung: summary = 2 bis 3 Sätze (höchstens 450 Zeichen), so ausführlich, wie der gelieferte Text es hergibt, importance = 1 bis 5:
 5: Zinsentscheide, wichtige Konjunkturdaten, Quartalszahlen großer Unternehmen, Übernahmen, Regulierung, große Marktbewegungen;

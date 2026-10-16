@@ -31,6 +31,8 @@ export async function spentThisMonth(db: SupabaseClient): Promise<number> {
 }
 
 export interface AiCall {
+  /** What the call is for (live, summary, wrap-plan, ...): shown in the cost breakdown, see ai_usage.purpose. */
+  purpose: string;
   system: string;
   user: string;
   schema: Record<string, unknown>;
@@ -69,7 +71,9 @@ export async function askJson<T>(db: SupabaseClient, budgetUsdMonth: number, cal
       output_config: { effort: call.effort ?? 'low', format: { type: 'json_schema', schema: call.schema } },
     });
     const cost = costUsd(res.usage.input_tokens, res.usage.output_tokens);
-    await db.rpc('ai_usage_add', { p_model: MODEL, p_in: res.usage.input_tokens, p_out: res.usage.output_tokens, p_cost: cost });
+    // A trailing "!" marks money spent on an answer that is thrown away.
+    const wasted = res.stop_reason === 'refusal' || res.stop_reason === 'max_tokens';
+    await db.rpc('ai_usage_add', { p_model: MODEL, p_in: res.usage.input_tokens, p_out: res.usage.output_tokens, p_cost: cost, p_purpose: wasted ? `${call.purpose}!` : call.purpose });
     if (res.stop_reason === 'refusal') return { ok: false, reason: 'refusal' };
     if (res.stop_reason === 'max_tokens') return { ok: false, reason: 'error' };
     const text = res.content.find((b) => b.type === 'text');
@@ -146,6 +150,6 @@ export async function searchWeb(
     // Tokens already spent are still recorded below.
     if (!tokensIn && !searches) return { ok: false, reason: 'error', error };
   }
-  await db.rpc('ai_usage_add', { p_model: MODEL, p_in: tokensIn, p_out: tokensOut, p_cost: costUsd(tokensIn, tokensOut) + searches * PRICE_PER_SEARCH });
+  await db.rpc('ai_usage_add', { p_model: MODEL, p_in: tokensIn, p_out: tokensOut, p_cost: costUsd(tokensIn, tokensOut) + searches * PRICE_PER_SEARCH, p_purpose: 'web-search' });
   return { ok: true, hits, searches, error };
 }
