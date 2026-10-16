@@ -74,6 +74,9 @@ describe('readSpeechAnswer', () => {
     expect(readSpeechAnswer({ status: 'error' })).toEqual({ ok: false, error: 'Vorlesen ist gerade nicht möglich.' });
     expect(readSpeechAnswer(null)).toEqual({ ok: false, error: 'Vorlesen ist gerade nicht möglich.' });
   });
+  it('turns the audio into a data URL', () => {
+    expect(readSpeechAnswer({ status: 'ok', audio: 'AAAA' })).toEqual({ ok: true, url: 'data:audio/mpeg;base64,AAAA' });
+  });
   it('treats an ok answer without audio as an error', () => {
     expect(readSpeechAnswer({ status: 'ok' }).ok).toBe(false);
   });

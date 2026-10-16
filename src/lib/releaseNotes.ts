@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.2',
+    date: '2026-10-16',
+    title: 'Vorlesen: Wiedergabe repariert',
+    notes: ['Das Vorlesen brach in Safari mit „NotSupportedError“ ab. Daily spielt die Sprache jetzt in einem Format ab, das Safari zuverlässig versteht.'],
+  },
+  {
     version: '0.17.1',
     date: '2026-10-16',
     title: 'Vorlesen: genauere Fehlermeldung',

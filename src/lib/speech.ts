@@ -160,15 +160,10 @@ const ERRORS: Record<string, string> = {
 };
 const GENERIC_ERROR = 'Vorlesen ist gerade nicht möglich.';
 
-/** The Edge Function's answer as a playable Blob URL, or the German error text. */
+/** The Edge Function's answer as a playable data URL (Safari plays MP3 from data URLs more reliably than from Blob URLs), or the German error text. */
 export function readSpeechAnswer(data: unknown): FetchResult {
   const d = data as { status?: unknown; audio?: unknown } | null;
-  if (d?.status === 'ok' && typeof d.audio === 'string' && d.audio) {
-    const bin = atob(d.audio);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return { ok: true, url: URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' })) };
-  }
+  if (d?.status === 'ok' && typeof d.audio === 'string' && d.audio) return { ok: true, url: `data:audio/mpeg;base64,${d.audio}` };
   return { ok: false, error: (typeof d?.status === 'string' && ERRORS[d.status]) || GENERIC_ERROR };
 }
 
@@ -197,7 +192,6 @@ function fetchAudio(text: string, voice: string, rate: number): Promise<FetchRes
 }
 
 function clearAudioCache(): void {
-  for (const p of audioCache.values()) void p.then((r) => r.ok && URL.revokeObjectURL(r.url));
   audioCache.clear();
 }
 
@@ -226,8 +220,28 @@ let player: HTMLAudioElement | null = null;
 let loadedPos = -1; // chunk currently loaded into the player (so "continue" does not fetch again)
 const listeners = new Set<() => void>();
 
-// A tiny silent WAV: playing it inside the tap unlocks the player on iOS, which only plays after a user action.
-const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+/** A tenth of a second of silent 8-bit WAV: playing it inside the tap unlocks the player on iOS, which only plays after a user action. */
+function silence(): string {
+  const n = 800;
+  const bytes = new Uint8Array(44 + n).fill(0x80);
+  const view = new DataView(bytes.buffer);
+  const text = (at: number, t: string) => [...t].forEach((c, i) => (bytes[at + i] = c.charCodeAt(0)));
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + n, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 8000, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  text(36, 'data');
+  view.setUint32(40, n, true);
+  let bin = '';
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return `data:audio/wav;base64,${btoa(bin)}`;
+}
 
 function emit(): void {
   listeners.forEach((l) => l());
@@ -379,7 +393,7 @@ export function startSpeech(id: string, title: string, script: Segment[]): void 
     return;
   }
   const el = audioPlayer();
-  el.src = SILENCE;
+  el.src = silence();
   void el.play().catch(() => undefined); // unlocks the player inside the tap
   state = { ...IDLE, status: 'playing', id, title, segmentCount: script.length };
   setMediaSession();
