@@ -178,6 +178,8 @@ Im Tab **Depot** legst du Positionen an (Name, ISIN oder WKN, Stückzahl, Einsta
 npx supabase functions deploy daily-news daily-briefing daily-news-detail daily-topics daily-speech --project-ref mhyunfeirajnmbrpdojm --no-verify-jwt --use-api
 ```
 
+**Functions ohne Terminal veröffentlichen (z. B. am iPad):** GitHub → *Actions* → *Edge Functions veröffentlichen* → *Run workflow* → Function wählen (oder „alle“) → *Run workflow*. Veröffentlicht wird der Stand von `main`. Einmalig nötig: unter `supabase.com/dashboard/account/tokens` einen Zugriffstoken erzeugen und in GitHub unter *Settings → Secrets and variables → Actions* als Secret `SUPABASE_ACCESS_TOKEN` anlegen. Der Token gehört nie in den Code.
+
 **Prüfen, ob der Zeitplan läuft** (SQL Editor):
 ```sql
 select jobname, schedule, active from cron.job where jobname like 'daily-%';
