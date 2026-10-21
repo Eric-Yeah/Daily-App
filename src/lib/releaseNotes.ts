@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.5',
+    date: '2026-10-21',
+    title: 'Deutlich weniger KI-Kosten',
+    notes: ['Die Kurzfassungen der Meldungen wurden bisher immer wieder neu von der KI geschrieben, auch wenn sie längst vorlagen. Jetzt bekommt jede Meldung nur noch einmal eine Kurzfassung. Das spart den größten Teil der KI-Kosten. Neue Meldungen kommen dadurch auch schneller an die Reihe.'],
+  },
+  {
     version: '0.17.4',
     date: '2026-10-21',
     title: 'Live-Blog abgeschaltet',

@@ -16,6 +16,7 @@ import { isNoise } from '../_shared/newsNoise.ts';
 import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 import { indexMoves } from '../_shared/wrap.ts';
 import { parseFeed, type FeedItem } from '../_shared/rss.ts';
+import { pickForSummary } from '../_shared/summaryPick.ts';
 
 interface Feed {
   id: string;
@@ -247,17 +248,17 @@ Deno.serve(async (req) => {
   // 4. Summaries for new items (most relevant first), within the budget
   const { data: open } = await db
     .from('news_items')
-    .select('id, title, teaser, source, lang, topics, published_at, official, news_summaries(item_id), news_links(position_id)')
+    .select('id, title, teaser, source, lang, topics, published_at, official, news_links(position_id)')
     .gte('published_at', new Date(minDate).toISOString())
     .order('published_at', { ascending: false })
     .limit(500);
-  type Open = { id: number; title: string; teaser: string | null; source: string; lang: string | null; topics: string[]; official: boolean; news_summaries: unknown[]; news_links: unknown[] };
-  const unsummarised = ((open ?? []) as Open[])
-    .filter((n) => !n.news_summaries?.length)
-    .sort((a, b) => (b.news_links?.length ?? 0) - (a.news_links?.length ?? 0) || Number(b.official) - Number(a.official));
-  const related = unsummarised.filter((n) => n.official || n.news_links?.length);
-  const general = unsummarised.filter((n) => !(n.official || n.news_links?.length)).slice(0, SUMMARY_GENERAL_PER_RUN);
-  const todo = [...related, ...general].slice(0, SUMMARY_MAX_PER_RUN);
+  type Open = { id: number; title: string; teaser: string | null; source: string; lang: string | null; topics: string[]; official: boolean; news_links: unknown[] };
+  const openItems = (open ?? []) as Open[];
+  // Which of them already have a summary is asked directly. The embedded news_summaries(...) of the query above did
+  // not tell reliably: items that were summarised long ago kept coming back and were paid for in every run.
+  const { data: done } = openItems.length ? await db.from('news_summaries').select('item_id').in('item_id', openItems.map((n) => n.id)) : { data: [] };
+  const haveSummary = new Set<number>(((done ?? []) as { item_id: number }[]).map((r) => r.item_id));
+  const todo = pickForSummary(openItems, haveSummary, SUMMARY_GENERAL_PER_RUN, SUMMARY_MAX_PER_RUN);
 
   let summarised = 0;
   let aiStop: string | null = null;
@@ -320,7 +321,15 @@ ${RULES}`,
         headline_only: Boolean(s.headline_only),
         model: 'claude-haiku-5-5',
       }));
-    if (summaries.length) await db.from('news_summaries').upsert(summaries, { onConflict: 'item_id', ignoreDuplicates: true });
+    if (summaries.length) {
+      const { error } = await db.from('news_summaries').upsert(summaries, { onConflict: 'item_id', ignoreDuplicates: true });
+      if (error) {
+        // Stop here: a failed save means the same items would be sent (and paid for) again in the next batch and run.
+        console.error('news_summaries upsert failed', error.message);
+        aiStop = 'store failed';
+        break;
+      }
+    }
     summarised += summaries.length;
 
     // Topics the AI saw in the item (meaning, not only words): store them with the item and link the positions right away.
@@ -345,5 +354,5 @@ ${RULES}`,
   await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());
   await db.from('liveblog_entries').delete().lt('created_at', new Date(now.getTime() - 30 * 86400_000).toISOString());
 
-  return json(200, { candidates: candidates.length, stored: rows.length, storeErrors, summarised, ai: aiStop ?? 'ok', live, feeds: stats });
+  return json(200, { candidates: candidates.length, stored: rows.length, storeErrors, withoutSummary: openItems.length - haveSummary.size, summarised, ai: aiStop ?? 'ok', live, feeds: stats });
 });
