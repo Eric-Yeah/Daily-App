@@ -7,6 +7,7 @@ import { liveBlogActive, liveCandidates, parseLive } from './liveblog.ts';
 import { classifyArticle, detailSystem, detailUser, extractArticle, isFetchableUrl, MAX_ARTICLE_CHARS, parseConclusion, parseDetail } from './article.ts';
 import { indexMoves, isLong, parsePlan, parseWrap, sectionSources } from './wrap.ts';
 import { isNoise } from './newsNoise.ts';
+import { pickForSummary } from './summaryPick.ts';
 import { buildOpen, newsAbout, parseOpen, pickMovers, quoteOf } from './marketopen.ts';
 import { cleanName, MAX_TOPICS, parseTopics, topicsSystem, topicsUser } from './topicSuggest.ts';
 import { KNOWN_TOPICS } from './newsTopics.ts';
@@ -447,6 +448,25 @@ describe('topic suggestions', () => {
     expect(parseTopics(data, 3)).toEqual([['Welt'], ['USA', 'Nasdaq 100', 'script'], []]);
     expect(parseTopics(null, 2)).toEqual([[], []]);
     expect(parseTopics({ items: [{ index: 0, topics: Array.from({ length: 12 }, (_, i) => `Thema ${i}`) }] }, 1)[0]).toHaveLength(MAX_TOPICS);
+  });
+});
+
+describe('pickForSummary', () => {
+  const item = (id: number, links = 0, official = false) => ({ id, official, news_links: Array.from({ length: links }, () => ({})) });
+
+  it('skips items that already have a summary', () => {
+    const picked = pickForSummary([item(1, 2), item(2, 1), item(3)], new Set([1, 3]), 10, 10);
+    expect(picked.map((n) => n.id)).toEqual([2]);
+  });
+
+  it('puts items with positions and official ones first, limits general news and the total', () => {
+    const items = [item(1), item(2), item(3), item(4, 1), item(5, 3), item(6, 0, true)];
+    expect(pickForSummary(items, new Set(), 1, 10).map((n) => n.id)).toEqual([5, 4, 6, 1]);
+    expect(pickForSummary(items, new Set(), 1, 2).map((n) => n.id)).toEqual([5, 4]);
+  });
+
+  it('returns nothing once everything has a summary', () => {
+    expect(pickForSummary([item(1), item(2, 1)], new Set([1, 2]), 5, 5)).toEqual([]);
   });
 });
 
