@@ -11,7 +11,7 @@ import { admin, isCron, json, CORS, ownerId, ownerSettings } from '../_shared/ad
 import { askJson, RULES } from '../_shared/ai.ts';
 import type { NewsInput } from '../_shared/briefing.ts';
 import { isoDay, parts } from '../_shared/berlin.ts';
-import { LIVE_SCHEMA, liveBlogActive, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
+import { LIVE_BLOG_ENABLED, LIVE_SCHEMA, liveBlogActive, liveCandidates, liveSystem, liveUser, parseLive } from '../_shared/liveblog.ts';
 import { isNoise } from '../_shared/newsNoise.ts';
 import { matchTopics, topicIndex } from '../_shared/newsTopics.ts';
 import { indexMoves } from '../_shared/wrap.ts';
@@ -339,7 +339,7 @@ ${RULES}`,
 
   // 5. Live blog (from 10:30, Berlin time)
   let live = 'off';
-  if (body.force || liveBlogActive(hour, parts(now).minute)) live = await liveBlog(db, now, settings.aiBudgetUsdMonth, body.force && body.liveHours ? Math.min(72, body.liveHours) : 0);
+  if (LIVE_BLOG_ENABLED && (body.force || liveBlogActive(hour, parts(now).minute))) live = await liveBlog(db, now, settings.aiBudgetUsdMonth, body.force && body.liveHours ? Math.min(72, body.liveHours) : 0);
 
   // 6. Keep the tables small: news 14 days, live blog 30 days
   await db.from('news_items').delete().lt('published_at', new Date(now.getTime() - 14 * 86400_000).toISOString());
