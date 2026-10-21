@@ -12,7 +12,7 @@ export interface LiveEntry {
 }
 
 /** Master switch: while false, daily-news writes no live-blog entries and spends nothing on them. Keep in sync with src/lib/features.ts. */
-export const LIVE_BLOG_ENABLED = false;
+export const LIVE_BLOG_ENABLED = true;
 
 /** The live blog is written from 10:30 until 22:59 Berlin time (hour and minute of the Berlin wall clock). */
 export const LIVE_FROM_MINUTE = 10 * 60 + 30;

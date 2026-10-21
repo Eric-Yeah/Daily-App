@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.6',
+    date: '2026-10-21',
+    title: 'Live-Blog wieder an',
+    notes: ['Der Live-Blog im Tab „Mittag/Nachmittag“ ist wieder eingeschaltet. Er läuft wie vorher von 10:30 bis 23 Uhr und lädt alle 2 Minuten neu.'],
+  },
+  {
     version: '0.17.5',
     date: '2026-10-21',
     title: 'Deutlich weniger KI-Kosten',
