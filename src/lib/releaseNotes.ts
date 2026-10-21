@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.4',
+    date: '2026-10-21',
+    title: 'Live-Blog abgeschaltet',
+    notes: ['Der Live-Blog im Tab „Mittag/Nachmittag“ ist vorerst abgeschaltet. Die Karte ist weg, und es werden keine neuen Einträge mehr geschrieben. Das spart KI-Kosten. Alle anderen Karten bleiben wie sie sind.'],
+  },
+  {
     version: '0.17.3',
     date: '2026-10-16',
     title: 'Vorlesen auch mit Stummschalter',

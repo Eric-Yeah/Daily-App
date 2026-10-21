@@ -7,6 +7,7 @@ import { formatTime, formatWeekday } from '../lib/format';
 import { getSettings } from '../lib/settings';
 import { readingMinutes } from '../lib/readingTime';
 import { useCollapsed } from '../lib/collapsed';
+import { LIVE_BLOG_ENABLED } from '../lib/features';
 import { FoldHead } from './Fold';
 import { ListenButton } from './Listen';
 import { wrapSegments } from '../lib/briefingScript';
@@ -46,7 +47,7 @@ export function useLiveBlog(): Loaded<LiveBlogEntry[]> {
   const signedIn = !!currentSession();
 
   useEffect(() => {
-    if (!signedIn) return;
+    if (!signedIn || !LIVE_BLOG_ENABLED) return;
     let alive = true;
     loadLiveBlog(new Date()).then((b) => alive && setBlock(b));
     return () => {
@@ -54,7 +55,7 @@ export function useLiveBlog(): Loaded<LiveBlogEntry[]> {
     };
   }, [signedIn, Math.floor(now.getTime() / 120000)]);
 
-  return { block, pending: signedIn && !block };
+  return { block, pending: LIVE_BLOG_ENABLED && signedIn && !block };
 }
 
 /**
@@ -113,7 +114,7 @@ export function LiveBlogCard() {
   const { block } = useLiveBlog();
   const [collapsed, setCollapsed] = useCollapsed('liveblog');
 
-  if (!block) return null;
+  if (!LIVE_BLOG_ENABLED || !block) return null;
   const tz = getSettings().timeZone;
   if (block.status !== 'ok') {
     return (
