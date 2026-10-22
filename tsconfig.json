@@ -13,6 +13,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "vite-plugin-pwa/client", "node"]
   },
   "include": ["src", "vite.config.ts"]

@@ -13,3 +13,4 @@ DAILY_APP_BRIEF.md
 
 # Generated knowledge graph (local only)
 graphify-out/
+dist-e2e/

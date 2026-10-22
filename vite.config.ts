@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from 'vite';
 import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { readFileSync } from 'node:fs';
+import { contentSecurityPolicy } from './src/lib/csp.ts';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -13,19 +14,7 @@ export default defineConfig(({ mode }) => {
   const supabaseOrigin = env.VITE_SUPABASE_URL ? new URL(env.VITE_SUPABASE_URL).origin : '';
 
   // Strict CSP, injected only into the production build (Vite's dev server needs inline styles).
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self'",
-    "font-src 'self'",
-    "img-src 'self' data:",
-    `connect-src 'self'${supabaseOrigin ? ' ' + supabaseOrigin : ''}`,
-    "manifest-src 'self'",
-    "worker-src 'self'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "object-src 'none'",
-  ].join('; ');
+  const csp = contentSecurityPolicy(supabaseOrigin);
 
   return {
     base: BASE,
