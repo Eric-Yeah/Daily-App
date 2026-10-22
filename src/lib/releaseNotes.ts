@@ -9,6 +9,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.7',
+    date: '2026-10-22',
+    title: 'Vorlesen funktioniert',
+    notes: [
+      'Der eigentliche Fehler ist gefunden: Eine Sicherheitsregel der App hat die Sprachdatei blockiert, bevor sie abgespielt werden konnte. Daher kamen „NotSupportedError“ und die anderen Meldungen. Die Regel erlaubt die Sprache jetzt, alles andere bleibt so streng wie vorher.',
+      '„Briefing anhören“ spielt jetzt ab. Pause, Weiter, Vor und Zurück funktionieren, und nach jedem Abschnitt geht es von selbst weiter.',
+      'Klappt etwas nicht, sagt die Meldung jetzt genauer, woran es liegt (zum Beispiel „nicht angemeldet“ oder eine Antwort von Google).',
+    ],
+  },
+  {
     version: '0.17.6',
     date: '2026-10-21',
     title: 'Live-Blog wieder an',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkText, cleanForSpeech, readSpeechAnswer, scriptChunks, speakingMinutes } from './speech';
+import { chunkText, cleanForSpeech, invokeErrorText, readSpeechAnswer, scriptChunks, speakingMinutes } from './speech';
 
 describe('cleanForSpeech', () => {
   it('turns symbols into words', () => {
@@ -79,5 +79,25 @@ describe('readSpeechAnswer', () => {
   });
   it('treats an ok answer without audio as an error', () => {
     expect(readSpeechAnswer({ status: 'ok' }).ok).toBe(false);
+  });
+});
+
+describe('readSpeechAnswer reasons', () => {
+  it('shows the failing step the Edge Function names', () => {
+    expect(readSpeechAnswer({ status: 'error', reason: 'google 403 PERMISSION_DENIED' })).toEqual({
+      ok: false,
+      error: 'Vorlesen ist gerade nicht möglich. (Stimme: google 403 PERMISSION_DENIED)',
+    });
+  });
+});
+
+describe('invokeErrorText', () => {
+  it('names the HTTP status of a failed call', () => {
+    expect(invokeErrorText({ message: 'Edge Function returned a non-2xx status code', context: new Response('', { status: 401 }) })).toBe(
+      'Vorlesen ist gerade nicht möglich. (Abruf: nicht angemeldet, 401)',
+    );
+    expect(invokeErrorText({ message: 'x', context: new Response('', { status: 404 }) })).toBe('Vorlesen ist gerade nicht möglich. (Abruf: Function daily-speech fehlt, 404)');
+    expect(invokeErrorText({ message: 'x', context: new Response('', { status: 500 }) })).toBe('Vorlesen ist gerade nicht möglich. (Abruf: HTTP 500)');
+    expect(invokeErrorText({ message: 'Failed to send a request to the Edge Function' })).toBe('Vorlesen ist gerade nicht möglich. (Abruf: Failed to send a request to the Edge Function)');
   });
 });

@@ -1,14 +1,7 @@
 // Server-side helpers for the Daily Edge Functions (Deno).
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2.117.2';
 
-export const CORS = {
-  'Access-Control-Allow-Origin': 'https://eric-yeah.github.io',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-export const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+export { CORS, json } from './http.ts';
 
 /** Service-role client for the "daily" schema (bypasses RLS; only used server-side). */
 export function admin(): SupabaseClient {

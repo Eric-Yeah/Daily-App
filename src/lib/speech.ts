@@ -160,11 +160,25 @@ const ERRORS: Record<string, string> = {
 };
 const GENERIC_ERROR = 'Vorlesen ist gerade nicht möglich.';
 
-/** The Edge Function's answer as a playable data URL (Safari plays MP3 from data URLs more reliably than from Blob URLs), or the German error text. */
+/**
+ * The Edge Function's answer as a playable data URL, or the German error text (with the failing step in brackets).
+ * The CSP must allow data: for media (see csp.ts), otherwise the player refuses the URL.
+ */
 export function readSpeechAnswer(data: unknown): FetchResult {
-  const d = data as { status?: unknown; audio?: unknown } | null;
+  const d = data as { status?: unknown; audio?: unknown; reason?: unknown } | null;
   if (d?.status === 'ok' && typeof d.audio === 'string' && d.audio) return { ok: true, url: `data:audio/mpeg;base64,${d.audio}` };
-  return { ok: false, error: (typeof d?.status === 'string' && ERRORS[d.status]) || GENERIC_ERROR };
+  const known = typeof d?.status === 'string' ? ERRORS[d.status] : undefined;
+  if (known) return { ok: false, error: known };
+  const reason = typeof d?.reason === 'string' && d.reason ? ` (Stimme: ${d.reason.slice(0, 60)})` : '';
+  return { ok: false, error: `${GENERIC_ERROR}${reason}` };
+}
+
+/** German error text for a failed call of the Edge Function, with the HTTP status if there was an answer. */
+export function invokeErrorText(error: { message?: string; context?: unknown }): string {
+  const status = typeof Response !== 'undefined' && error.context instanceof Response ? error.context.status : null;
+  if (status === 401) return `${GENERIC_ERROR} (Abruf: nicht angemeldet, 401)`;
+  if (status === 404) return `${GENERIC_ERROR} (Abruf: Function daily-speech fehlt, 404)`;
+  return `${GENERIC_ERROR} (Abruf: ${status ? `HTTP ${status}` : error.message || 'unbekannt'})`;
 }
 
 // Audio already fetched or being fetched, per text+voice+rate, so skipping back and the prefetch cost no characters twice.
@@ -178,7 +192,7 @@ function fetchAudio(text: string, voice: string, rate: number): Promise<FetchRes
     p = (async (): Promise<FetchResult> => {
       try {
         const { data, error } = await supabase().functions.invoke('daily-speech', { body: { text, voice, rate } });
-        return error ? { ok: false, error: `${GENERIC_ERROR} (Abruf: ${error.message})` } : readSpeechAnswer(data);
+        return error ? { ok: false, error: invokeErrorText(error) } : readSpeechAnswer(data);
       } catch (e) {
         return { ok: false, error: `${GENERIC_ERROR} (Abruf: ${e instanceof Error ? e.message : 'unbekannt'})` };
       }
@@ -357,10 +371,11 @@ async function playChunk(gen: number): Promise<void> {
   prefetch(gen, pos + 1);
 }
 
-function playFrom(from: number): void {
+function playFrom(from: number, unlocking = false): void {
   generation++;
   pos = Math.max(0, Math.min(from, chunks.length));
-  player?.pause();
+  // Right after the unlock the silent clip keeps playing until the first chunk arrives (pausing it at once is not needed).
+  if (!unlocking) player?.pause();
   loadedPos = -1;
   publish({ status: 'playing', error: null, ...position() });
   void holdScreen(true);
@@ -405,12 +420,16 @@ export function startSpeech(id: string, title: string, script: Segment[]): void 
   } catch {
     // older systems: the silent switch may mute the player
   }
+  // iOS lets a media element play without a tap only after it once started playing inside a tap. The audio of the
+  // first chunk arrives after a network call, i.e. outside the tap, so the same element plays a silent clip now.
   const el = audioPlayer();
+  el.onended = null;
+  el.onerror = null;
   el.src = silence();
-  void el.play().catch(() => undefined); // unlocks the player inside the tap
+  void el.play().catch(() => undefined);
   state = { ...IDLE, status: 'playing', id, title, segmentCount: script.length };
   setMediaSession();
-  playFrom(0);
+  playFrom(0, true);
 }
 
 export function pauseSpeech(): void {

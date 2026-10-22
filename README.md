@@ -53,6 +53,7 @@ Welche Ansicht vorgewählt ist und was die Countdowns anzeigen, hängt von der U
 |---|---|
 | `npm test` | Tests (Zahlenformat, Zeitlogik, Sperre, Aufgaben, ISIN, CSV inkl. Mac-Formate, Depot-Berechnung) |
 | `npm run test:db` | Datenbank-Tests: Migrationen und Row Level Security in einer Test-Datenbank (nie die echte) |
+| `npm run test:e2e` | Browser-Test fürs Vorlesen: baut die App wie veröffentlicht (mit CSP und Service Worker), tippt bei 390 px auf „Briefing anhören“ und prüft, dass echtes MP3 abspielt (Pause, Weiter, Vor, Zurück). Google und Supabase sind dabei nachgebildet. Braucht einen Playwright-Chromium |
 | `npm run check:public` | Prüft, dass nichts Privates im Code steht |
 | `npm run build` | Typprüfung + fertige App in `dist/` |
 | `npm run preview` | Den Build lokal ansehen (mit Service Worker und CSP) |
@@ -222,7 +223,7 @@ select status, return_message, start_time from cron.job_run_details order by sta
 - **Gemeinsame Adresse:** Alle deine Apps liegen unter `eric-yeah.github.io` und teilen sich denselben Browser-Ursprung. Deshalb:
   - nutzen alle Einträge im Browserspeicher das Präfix `daily:`, und der Offline-Cache heißt `daily-…`,
   - gibt es **keine Drittanbieter-Skripte**, die Schriften liegen selbst gehostet in der App,
-  - verbietet eine strenge **Content-Security-Policy** alles außer der eigenen Adresse (und ab M2 Supabase),
+  - verbietet eine strenge **Content-Security-Policy** alles außer der eigenen Adresse (und ab M2 Supabase); nur Audio darf zusätzlich als `data:`/`blob:` kommen, sonst bleibt das Vorlesen stumm (`src/lib/csp.ts`),
   - werden Texte aus Meldungen nur als Text angezeigt, nie als HTML.
 - **Die Adresse ist endgültig.** Face ID/Passkeys (ab M2) sind an `eric-yeah.github.io` gebunden. Ein Umzug würde sie ungültig machen.
 - Schlüssel kommen nur in Supabase-Secrets oder in deine lokale `.env` (steht in `.gitignore`). Vorlage: [`.env.example`](.env.example).
