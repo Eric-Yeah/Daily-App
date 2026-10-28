@@ -6,6 +6,7 @@ import { parseHHMM, sessionFraction } from '../lib/time';
 import { formatDayShort, formatEuro, formatPct, formatPctArrow, MISSING, spokenPct, trend } from '../lib/format';
 import { minuteLabel, ScrubChart, type ScrubPoint } from './ScrubChart';
 import { useSettings } from '../lib/settings';
+import { Euro } from './Euro';
 import { safeHref } from '../lib/safeUrl';
 
 /** A percent change: shown with sign (and arrow), read out as words, so the direction is not only a colour. */
@@ -97,18 +98,17 @@ export function IndexStrip({ items }: { items: IndexQuote[] }) {
 
 /** Big value + change pill + "+201 € gegenüber …" line. */
 export function DepotHeadline({ summary, comparedTo }: { summary: DepotSummary; comparedTo: string }) {
-  const { hideAmounts } = useSettings();
   const t = trend(summary.changePct, 2);
   return (
     <>
       <div class="depot-row">
-        <div class="depot-value">{formatEuro(summary.value, { hidden: hideAmounts })}</div>
+        <div class="depot-value"><Euro value={summary.value} /></div>
         <div class={`change-pill ${t}`}>
           <Pct value={summary.changePct} decimals={2} withArrow />
         </div>
       </div>
       <div class="depot-sub">
-        {formatEuro(summary.changeAbs, { signed: true, hidden: hideAmounts })} gegenüber {comparedTo}
+        <Euro value={summary.changeAbs} signed /> gegenüber {comparedTo}
       </div>
     </>
   );
@@ -285,7 +285,6 @@ export function ChangeTiles({ items, mutedNames = false }: { items: { name: stri
 }
 
 export function KpiTiles({ items, columns = 2 }: { items: (Kpi & { abs?: number })[]; columns?: 2 | 3 }) {
-  const { hideAmounts } = useSettings();
   return (
     <div class={`kpis${columns === 3 ? ' kpis--3' : ''}`}>
       {items.map((k) => (
@@ -294,7 +293,7 @@ export function KpiTiles({ items, columns = 2 }: { items: (Kpi & { abs?: number 
           <span class={`kpi__value ${trend(k.pct, 1)}`}>
             <Pct value={k.pct} />
           </span>
-          <span class="kpi__sub">{k.abs !== undefined ? formatEuro(k.abs, { signed: true, hidden: hideAmounts }) : k.sub}</span>
+          <span class="kpi__sub">{k.abs !== undefined ? <Euro value={k.abs} signed /> : k.sub}</span>
         </div>
       ))}
     </div>

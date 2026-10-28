@@ -9,6 +9,12 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.17.8',
+    date: '2026-10-28',
+    title: 'Ausgeblendete Beträge antippen',
+    notes: ['Ist „Beträge ausblenden“ an, zeigt ein Tipp auf „•••• €“ jetzt den echten Betrag. Nach 5 Sekunden wird er wieder verdeckt, ein zweiter Tipp verdeckt ihn sofort.'],
+  },
+  {
     version: '0.17.7',
     date: '2026-10-22',
     title: 'Vorlesen funktioniert',

@@ -1,6 +1,7 @@
+import type { ComponentChildren } from 'preact';
 import { useSettings } from '../lib/settings';
 
-export function Header({ dateLine, title, pill }: { dateLine: string; title: string; pill?: string }) {
+export function Header({ dateLine, title, pill }: { dateLine: ComponentChildren; title: string; pill?: string }) {
   return (
     <header class="header">
       <div>

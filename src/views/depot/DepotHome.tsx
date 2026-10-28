@@ -1,16 +1,15 @@
 import { useState } from 'preact/hooks';
 import { StateCard, SkeletonCard } from '../../components/Block';
+import { Euro } from '../../components/Euro';
 import { Header } from '../../components/Header';
 import { useDepot, type Group, type Position } from '../../data/depot';
-import { formatEuro, formatQuantity } from '../../lib/format';
+import { formatQuantity } from '../../lib/format';
 import { securityId } from '../../lib/isin';
 import { costBasisOf, monthlySavingsOf } from '../../lib/portfolio';
-import { useSettings } from '../../lib/settings';
 import { DEFAULT_GROUPS } from '../../lib/topics';
 
 export function DepotHome() {
   const { block, store } = useDepot();
-  const { hideAmounts } = useSettings();
   const [showArchived, setShowArchived] = useState(false);
 
   if (!block) {
@@ -36,7 +35,7 @@ export function DepotHome() {
   const total = costBasisOf(active);
   const monthlySavings = monthlySavingsOf(active);
   const dateLine = active.length
-    ? `${active.length} ${active.length === 1 ? 'Position' : 'Positionen'} · Einstand ${formatEuro(total, { hidden: hideAmounts })}`
+    ? <>{active.length} {active.length === 1 ? 'Position' : 'Positionen'} · Einstand <Euro value={total} /></>
     : 'Positionen und Gruppen';
 
   const sections: { group: Group | null; items: Position[] }[] = [
@@ -89,13 +88,13 @@ export function DepotHome() {
         <>
           {monthlySavings > 0 && (
             <p class="note">
-              Sparpläne: <span class="mono">{formatEuro(monthlySavings, { decimals: monthlySavings % 1 ? 2 : 0, hidden: hideAmounts })}</span> pro Monat
+              Sparpläne: <span class="mono"><Euro value={monthlySavings} decimals={monthlySavings % 1 ? 2 : 0} /></span> pro Monat
               {' '}({active.filter((p) => p.savingsAmount).length} {active.filter((p) => p.savingsAmount).length === 1 ? 'Position' : 'Positionen'})
             </p>
           )}
           <p class="note">Kurse und Tagesänderungen siehst du im Tab „Heute“. Die Kursabfrage läuft zu Handelszeiten alle 30 Minuten.</p>
           {sections.map((s) => (
-            <PositionSection key={s.group?.id ?? 'none'} group={s.group} items={s.items} hidden={hideAmounts} />
+            <PositionSection key={s.group?.id ?? 'none'} group={s.group} items={s.items} />
           ))}
         </>
       )}
@@ -105,14 +104,14 @@ export function DepotHome() {
           <button class="link-button" type="button" onClick={() => setShowArchived(!showArchived)}>
             {showArchived ? 'Archivierte ausblenden' : `Archivierte anzeigen (${archived.length})`}
           </button>
-          {showArchived && <PositionSection group={{ id: 'archiv', name: 'Archiviert', color: '#A9B8C9', sort: 0 }} items={archived} hidden={hideAmounts} />}
+          {showArchived && <PositionSection group={{ id: 'archiv', name: 'Archiviert', color: '#A9B8C9', sort: 0 }} items={archived} />}
         </>
       )}
     </main>
   );
 }
 
-function PositionSection({ group, items, hidden }: { group: Group | null; items: Position[]; hidden: boolean }) {
+function PositionSection({ group, items }: { group: Group | null; items: Position[] }) {
   return (
     <section class="card gap-8" aria-label={group?.name ?? 'Ohne Gruppe'}>
       <div class="card-head">
@@ -120,7 +119,7 @@ function PositionSection({ group, items, hidden }: { group: Group | null; items:
           <span class="dot" style={{ background: group?.color ?? '#A9B8C9' }} aria-hidden="true" />
           {group?.name ?? 'Ohne Gruppe'}
         </h2>
-        <span class="note mono">{formatEuro(costBasisOf(items), { hidden })}</span>
+        <span class="note mono"><Euro value={costBasisOf(items)} /></span>
       </div>
       <ul class="plain-list position-list">
         {items.map((p) => (
@@ -130,16 +129,16 @@ function PositionSection({ group, items, hidden }: { group: Group | null; items:
                 <span class="position-row__name">{p.name}</span>
                 <span class="position-row__sub">
                   <span class="mono">{securityId(p)}</span> · <span class="nowrap">{formatQuantity(p.quantity)} Stk.</span> ·{' '}
-                  <span class="nowrap">Ø {formatEuro(p.costPerUnit, { decimals: 2, hidden })}</span>
+                  <span class="nowrap">Ø <Euro value={p.costPerUnit} decimals={2} /></span>
                   {p.savingsAmount && (
                     <>
                       {' '}
-                      · <span class="nowrap">Sparplan {formatEuro(p.savingsAmount, { decimals: p.savingsAmount % 1 ? 2 : 0, hidden })}/Monat{p.savingsDay ? `, am ${p.savingsDay}.` : ''}</span>
+                      · <span class="nowrap">Sparplan <Euro value={p.savingsAmount} decimals={p.savingsAmount % 1 ? 2 : 0} />/Monat{p.savingsDay ? `, am ${p.savingsDay}.` : ''}</span>
                     </>
                   )}
                 </span>
               </span>
-              <span class="position-row__value mono">{formatEuro(p.quantity * p.costPerUnit, { hidden })}</span>
+              <span class="position-row__value mono"><Euro value={p.quantity * p.costPerUnit} /></span>
             </a>
           </li>
         ))}

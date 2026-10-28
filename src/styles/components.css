@@ -1907,3 +1907,9 @@ a.button--secondary:hover {
     gap: 32px;
   }
 }
+
+/* Hidden euro amounts ("•••• €") can be tapped to show the value for a moment. */
+.euro-toggle {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
